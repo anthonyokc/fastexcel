@@ -1,16 +1,18 @@
 #' Read an Excel sheet
 #'
-#' Reads a sheet from an Excel workbook using the Rust `fastexcel` crate and
-#' returns an Arrow `RecordBatch` by default.
+#' Reads a worksheet from an Excel workbook and returns an Arrow `RecordBatch`
+#' by default.
 #'
-#' @param path Path to an Excel workbook supported by upstream `fastexcel`.
-#' @param sheet Sheet index or name. Integer indexes are 1-based in R.
-#' @param range Optional Excel-style range. The MVP supports column selectors
-#'   such as `"A:A"` and `"A:D"` via upstream column selection.
+#' @param path Path to an Excel workbook.
+#' @param sheet Worksheet to read, either as a 1-based sheet index or a sheet
+#'   name.
+#' @param range Optional Excel-style column range, such as `"A:A"` for one
+#'   column or `"A:D"` for multiple columns.
 #' @param col_names `TRUE` to use the first row as names, `FALSE` to generate
 #'   names, or a character vector of explicit names.
 #' @param n_max Maximum number of data rows to read.
-#' @param as Output type: `"arrow"`, `"tibble"`, `"data.frame"`, or `"vector"`.
+#' @param as Type of object to return: `"arrow"`, `"tibble"`, `"data.frame"`,
+#'   or `"vector"`.
 #'
 #' @return For `as = "arrow"`, an `arrow::RecordBatch`. For `as = "tibble"`, a
 #'   tibble. For `as = "data.frame"`, a base data frame. For `as = "vector"`, a
@@ -64,7 +66,7 @@ excel_sheets <- function(path) {
 #' List table names in an Excel workbook
 #'
 #' @param path Path to an Excel workbook.
-#' @param sheet Optional sheet name. Sheet-index filtering is not yet supported.
+#' @param sheet Optional sheet name used to limit results to one worksheet.
 #' @return A character vector of table names.
 #' @export
 excel_tables <- function(path, sheet = NULL) {

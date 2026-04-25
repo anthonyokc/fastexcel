@@ -1,9 +1,6 @@
 #' fastexcel: Fast Excel Reader Backed by Rust
 #'
-#' Read Excel workbooks using the Rust `fastexcel` crate from ToucanToco.
-#'
-#' The upstream Rust crate is MIT licensed and lives at
-#' <https://github.com/ToucanToco/fastexcel>.
+#' Read Excel workbooks into Arrow, data frames, tibbles, or vectors.
 #'
 #' @keywords internal
 "_PACKAGE"
