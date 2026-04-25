@@ -78,6 +78,57 @@ excel_tables(path)
 excel_defined_names(path)
 ```
 
+## Security and Resource Limits
+
+Excel files can be expensive to parse, especially `.xlsx` files because they are
+ZIP archives containing XML. A small compressed workbook can expand into much
+larger XML, shared strings, and cell data during parsing. Treat workbooks from
+untrusted sources as potentially hostile.
+
+`fastexcel` applies pre-parse checks before handing data to the upstream parser.
+These checks reduce risk, but they are resource limits, not a sandbox.
+
+Compressed input size is controlled by:
+
+```r
+options(fastexcel.max_workbook_size = 100 * 1024^2)
+```
+
+For file paths, this checks the file size before parsing. For raw vectors, the
+raw vector has already been allocated by R before `fastexcel` can inspect it, so
+this only prevents oversized bytes from being parsed further.
+
+ZIP-based workbooks such as `.xlsx` are also checked using ZIP metadata before
+parsing. These options are separate from the compressed-size limit:
+
+```r
+options(
+  fastexcel.max_zip_entries = 10000,
+  fastexcel.max_zip_entry_size = 2 * 1024^3,
+  fastexcel.max_zip_total_size = 8 * 1024^3,
+  fastexcel.max_zip_compression_ratio = 100
+)
+```
+
+The limits protect different parts of the workload:
+
+- `fastexcel.max_workbook_size`: compressed file size or raw-vector length.
+- `fastexcel.max_zip_entries`: number of files inside the workbook ZIP.
+- `fastexcel.max_zip_entry_size`: largest declared uncompressed ZIP entry.
+- `fastexcel.max_zip_total_size`: total declared uncompressed ZIP size.
+- `fastexcel.max_zip_compression_ratio`: suspicious per-entry expansion ratio.
+
+Current limitations:
+
+- ZIP metadata checks reduce zip-bomb risk but cannot prove a workbook is safe.
+- ZIP metadata can be misleading or incomplete in edge cases.
+- The checks do not enforce XML parser limits, max cell counts, elapsed-time
+  limits, or OS memory limits.
+- `n_max` limits returned data rows, but metadata, shared strings, sheet
+  structures, and other workbook content may still be parsed first.
+- For untrusted uploads or multi-user services, also use upload limits, worker
+  process isolation, memory limits, and timeouts.
+
 Read workbook bytes, such as the raw vector returned by cloud storage clients:
 
 ```r
