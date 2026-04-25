@@ -1,0 +1,13 @@
+^\.git$
+^\.gitignore$
+^\.Rprofile$
+^\.Rbuildignore$
+^\.Rcheck$
+^\.\.Rcheck$
+\.Rcheck$
+\.gitkeep$
+\.tar\.gz$
+^src/.*\.o$
+^src/.*\.so$
+^src/rust/target$
+^src/rust/Cargo\.lock$

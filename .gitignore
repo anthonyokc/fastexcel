@@ -48,6 +48,15 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 
+# Rust build artifacts
+/src/rust/target/
+
+# R package compiled artifacts
+/src/*.o
+/src/*.so
+/src/*.dll
+/src/symbols.rds
+
 # Local directory for junk files
 /local/
 

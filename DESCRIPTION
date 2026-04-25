@@ -1,0 +1,23 @@
+Package: fastexcel
+Title: Fast Excel Reader Backed by Rust
+Version: 0.0.0.9000
+Authors@R: person("Anthony", role = c("aut", "cre"), email = "anthony@example.com")
+Author: Anthony [aut, cre]
+Maintainer: Anthony <anthony@example.com>
+Description: Reads Excel workbooks using the Rust 'fastexcel' crate from
+    ToucanToco and returns Arrow-first results in R.
+License: MIT + file LICENSE
+URL: https://github.com/anthonyokc/fastexcel
+BugReports: https://github.com/anthonyokc/fastexcel/issues
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Depends:
+    R (>= 4.1)
+Imports:
+    arrow
+Suggests:
+    testthat (>= 3.0.0),
+    tibble
+Config/testthat/edition: 3
+SystemRequirements: Cargo (Rust's package manager), rustc >= 1.85

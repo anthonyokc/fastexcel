@@ -1,0 +1,13 @@
+[package]
+name = "fastexcelr"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+chrono = "0.4"
+extendr-api = { version = "0.8", features = ["result_condition"] }
+fastexcel_rs = { package = "fastexcel", version = "0.20.1" }
