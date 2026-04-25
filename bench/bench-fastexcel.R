@@ -1,0 +1,142 @@
+#!/usr/bin/env Rscript
+
+# Benchmarks for fastexcel against modern Excel readers.
+# Run from the package root with: Rscript bench/bench-fastexcel.R
+
+required_packages <- c(
+  "bench",
+  "fastexcel",
+  "ggplot2",
+  "here",
+  "openxlsx2",
+  "readxl",
+  "scales"
+)
+optional_packages <- c("tidyxl")
+
+missing_packages <- required_packages[
+  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
+]
+
+if (length(missing_packages) > 0L) {
+  stop(
+    "Install benchmark dependencies before running this script: ",
+    paste(missing_packages, collapse = ", "),
+    call. = FALSE
+  )
+}
+
+has_optional_package <- function(package) {
+  requireNamespace(package, quietly = TRUE)
+}
+
+workbook <- here::here("inst", "extdata", "synthetic_large.xlsx")
+if (!file.exists(workbook)) {
+  stop("Benchmark workbook not found: ", workbook, call. = FALSE)
+}
+
+output_dir <- here::here("bench", "results")
+dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+iterations <- as.integer(Sys.getenv("FASTEXCEL_BENCH_ITERATIONS", "10"))
+if (is.na(iterations) || iterations < 1L) {
+  stop("FASTEXCEL_BENCH_ITERATIONS must be a positive integer.", call. = FALSE)
+}
+
+cat("Benchmarking ", workbook, "\n", sep = "")
+cat("Iterations: ", iterations, "\n", sep = "")
+
+bench_expressions <- alist(
+  fastexcel_arrow = fastexcel::read_excel(workbook, as = "arrow"),
+  fastexcel_data_frame = fastexcel::read_excel(workbook, as = "data.frame"),
+  readxl_tibble = readxl::read_excel(workbook),
+  openxlsx2_data_frame = openxlsx2::read_xlsx(workbook)
+)
+
+if (has_optional_package("tidyxl")) {
+  cat("Including optional tidyxl cell-level benchmark.\n")
+  bench_expressions$tidyxl_cells <- quote(tidyxl::xlsx_cells(workbook))
+} else {
+  cat("Skipping optional tidyxl benchmark; package is not installed.\n")
+}
+
+bench_call <- as.call(c(
+  quote(bench::mark),
+  bench_expressions,
+  list(
+    iterations = iterations,
+    check = FALSE,
+    memory = TRUE,
+    filter_gc = TRUE
+  )
+))
+
+results <- eval(bench_call)
+
+summary_results <- data.frame(
+  reader = as.character(results$expression),
+  min = as.character(results$min),
+  median = as.character(results$median),
+  itr_per_sec = as.numeric(results$`itr/sec`),
+  mem_alloc = as.character(results$mem_alloc),
+  mem_alloc_bytes = as.numeric(results$mem_alloc),
+  n_gc = results$n_gc,
+  n_itr = results$n_itr,
+  total_time = as.character(results$total_time),
+  stringsAsFactors = FALSE
+)
+summary_results <- summary_results[order(as.numeric(results$median)), ]
+
+print(summary_results)
+
+write.csv(
+  summary_results,
+  file = file.path(output_dir, "fastexcel-summary.csv"),
+  row.names = FALSE
+)
+
+saveRDS(results, file = file.path(output_dir, "fastexcel-bench.rds"))
+
+time_plot <- ggplot2::autoplot(results) +
+  ggplot2::labs(
+    title = "Excel reader benchmark",
+    subtitle = basename(workbook),
+    x = NULL,
+    y = "Time per iteration"
+  )
+
+memory_plot <- ggplot2::ggplot(
+  summary_results,
+  ggplot2::aes(
+    x = stats::reorder(.data$reader, .data$mem_alloc_bytes),
+    y = .data$mem_alloc_bytes
+  )
+) +
+  ggplot2::geom_col(fill = "#3366AA") +
+  ggplot2::coord_flip() +
+  ggplot2::scale_y_continuous(labels = scales::label_bytes()) +
+  ggplot2::labs(
+    title = "Excel reader memory allocation",
+    subtitle = basename(workbook),
+    x = NULL,
+    y = "Allocated memory"
+  ) +
+  ggplot2::theme_minimal(base_size = 12)
+
+ggplot2::ggsave(
+  filename = file.path(output_dir, "fastexcel-time.png"),
+  plot = time_plot,
+  width = 8,
+  height = 5,
+  dpi = 150
+)
+
+ggplot2::ggsave(
+  filename = file.path(output_dir, "fastexcel-memory.png"),
+  plot = memory_plot,
+  width = 8,
+  height = 5,
+  dpi = 150
+)
+
+cat("Wrote benchmark outputs to ", output_dir, "\n", sep = "")

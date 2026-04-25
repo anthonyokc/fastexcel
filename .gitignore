@@ -65,3 +65,6 @@ rsconnect/
 
 # Mac file that stores custom icon information
 .DS_Store
+
+# Don't store large benchmark daata
+inst/extdata/synthetic_large.xlsx
