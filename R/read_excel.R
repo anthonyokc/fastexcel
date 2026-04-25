@@ -11,7 +11,23 @@
 #'   column or `"A:D"` for multiple columns.
 #' @param col_names `TRUE` to use the first row as names, `FALSE` to generate
 #'   names, or a character vector of explicit names.
+#' @param header_row 1-based row containing column names when `col_names = TRUE`.
+#'   Use `NULL` to let the reader use its default first non-empty row behavior.
+#' @param skip_rows Number of rows to skip after the header row. Use `NULL` for
+#'   the upstream default of skipping only empty leading rows.
 #' @param n_max Maximum number of data rows to read.
+#' @param schema_sample_rows Number of rows to sample for schema inference. Use
+#'   `NULL` to sample all rows.
+#' @param dtype_coercion How to handle cells that do not match the inferred or
+#'   specified type: `"coerce"` or `"strict"`.
+#' @param dtypes Optional type override. Supply a single dtype string to apply to
+#'   all selected columns, or a named character vector mapping column names to
+#'   dtypes. Supported values are `"null"`, `"int"`, `"float"`, `"string"`,
+#'   `"boolean"`, `"datetime"`, `"date"`, and `"duration"`.
+#' @param skip_whitespace_tail_rows Whether to ignore trailing rows containing
+#'   only whitespace and null values.
+#' @param whitespace_as_null Whether string cells containing only whitespace are
+#'   treated as missing values.
 #' @param as Type of object to return: `"arrow"`, `"tibble"`, `"data.frame"`,
 #'   or `"vector"`.
 #'
@@ -31,16 +47,43 @@ read_excel <- function(path,
                        sheet = 1,
                        range = NULL,
                        col_names = TRUE,
+                       header_row = 1L,
+                       skip_rows = NULL,
                        n_max = Inf,
+                       schema_sample_rows = NULL,
+                       dtype_coercion = c("coerce", "strict"),
+                       dtypes = NULL,
+                       skip_whitespace_tail_rows = FALSE,
+                       whitespace_as_null = FALSE,
                        as = c("arrow", "tibble", "data.frame", "vector")) {
   as <- match.arg(as)
+  dtype_coercion <- match.arg(dtype_coercion)
   path <- validate_source(path)
   sheet <- validate_sheet(sheet)
   range <- validate_range(range)
   col_names <- validate_col_names(col_names)
+  header_row <- validate_optional_row_count(header_row, "header_row", zero_allowed = FALSE)
+  skip_rows <- validate_optional_row_count(skip_rows, "skip_rows", zero_allowed = TRUE)
   n_max <- validate_n_max(n_max)
+  schema_sample_rows <- validate_optional_row_count(schema_sample_rows, "schema_sample_rows", zero_allowed = FALSE)
+  dtypes <- validate_dtypes(dtypes)
+  skip_whitespace_tail_rows <- validate_flag(skip_whitespace_tail_rows, "skip_whitespace_tail_rows")
+  whitespace_as_null <- validate_flag(whitespace_as_null, "whitespace_as_null")
 
-  columns <- .read_excel_columns(path, sheet, range, col_names, n_max)
+  columns <- .read_excel_columns(
+    path,
+    sheet,
+    range,
+    col_names,
+    header_row,
+    skip_rows,
+    n_max,
+    schema_sample_rows,
+    dtype_coercion,
+    dtypes,
+    skip_whitespace_tail_rows,
+    whitespace_as_null
+  )
   batch <- columns_to_record_batch(columns)
 
   switch(
@@ -161,6 +204,49 @@ validate_n_max <- function(n_max) {
     return(NA_integer_)
   }
   as.integer(n_max)
+}
+
+validate_optional_row_count <- function(value, name, zero_allowed) {
+  if (is.null(value)) {
+    return(NA_integer_)
+  }
+  if (!is.numeric(value) || length(value) != 1L || is.na(value) || !is.finite(value)) {
+    stop("`", name, "` must be NULL or a single ", if (zero_allowed) "non-negative" else "positive", " integer.", call. = FALSE)
+  }
+  int_value <- as.integer(value)
+  if (value != int_value || int_value < as.integer(!zero_allowed)) {
+    stop("`", name, "` must be NULL or a single ", if (zero_allowed) "non-negative" else "positive", " integer.", call. = FALSE)
+  }
+  int_value
+}
+
+validate_dtypes <- function(dtypes) {
+  if (is.null(dtypes)) {
+    return(NA_character_)
+  }
+  valid <- c("null", "int", "float", "string", "boolean", "datetime", "date", "duration")
+  if (!is.character(dtypes) || length(dtypes) < 1L || anyNA(dtypes) || any(!nzchar(dtypes))) {
+    stop("`dtypes` must be NULL, a dtype string, or a named character vector of dtype strings.", call. = FALSE)
+  }
+  bad <- setdiff(dtypes, valid)
+  if (length(bad) > 0L) {
+    stop("Unsupported dtype: ", bad[[1L]], ".", call. = FALSE)
+  }
+  dtype_names <- names(dtypes)
+  if (length(dtypes) == 1L && is.null(dtype_names)) {
+    return(unname(dtypes))
+  }
+  if (is.null(dtype_names) || anyNA(dtype_names) || any(!nzchar(dtype_names))) {
+    stop("Named `dtypes` must have one non-empty column name per dtype.", call. = FALSE)
+  }
+  dtypes
+}
+
+validate_flag <- function(value, name) {
+  if (!is.logical(value) || length(value) != 1L || is.na(value)) {
+    stop("`", name, "` must be TRUE or FALSE.", call. = FALSE)
+  }
+  value
 }
 
 require_namespace <- function(package) {

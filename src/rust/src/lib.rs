@@ -1,8 +1,10 @@
 use chrono::{NaiveDate, NaiveDateTime, Timelike};
 use extendr_api::prelude::*;
 use fastexcel_rs::{
-    read_excel, ExcelReader, FastExcelSeries, IdxOrName, LoadSheetOrTableOptions, SelectedColumns,
+    read_excel, DType, DTypeCoercion, DTypes, ExcelReader, FastExcelSeries, IdxOrName,
+    LoadSheetOrTableOptions, SelectedColumns, SkipRows,
 };
+use std::collections::HashMap;
 use std::str::FromStr;
 
 #[extendr]
@@ -11,7 +13,14 @@ fn read_excel_columns(
     sheet: Robj,
     range: Robj,
     col_names: Robj,
+    header_row: Robj,
+    skip_rows: Robj,
     n_max: Robj,
+    schema_sample_rows: Robj,
+    dtype_coercion: Robj,
+    dtypes: Robj,
+    skip_whitespace_tail_rows: bool,
+    whitespace_as_null: bool,
 ) -> Result<List> {
     let mut reader = reader_from_source(source)?;
     let mut opts = LoadSheetOrTableOptions::new_for_sheet();
@@ -20,6 +29,12 @@ fn read_excel_columns(
         opts = opts.no_header_row();
     } else if let Some(names) = col_names.as_str_vector() {
         opts = opts.no_header_row().column_names(names);
+    } else if let Some(row) = optional_positive_integer(header_row)? {
+        opts = opts.header_row(row - 1);
+    }
+
+    if let Some(n) = optional_non_negative_integer(skip_rows)? {
+        opts = opts.skip_rows(SkipRows::Simple(n));
     }
 
     if let Some(n) = n_max.as_integer() {
@@ -27,6 +42,22 @@ fn read_excel_columns(
             opts = opts.n_rows(n as usize);
         }
     }
+
+    if let Some(n) = optional_positive_integer(schema_sample_rows)? {
+        opts = opts.schema_sample_rows(n);
+    }
+
+    if let Some(value) = dtype_coercion.as_str() {
+        opts = opts.dtype_coercion(DTypeCoercion::from_str(value).map_err(to_r_error)?);
+    }
+
+    if let Some(value) = dtypes_from_robj(&dtypes)? {
+        opts = opts.with_dtypes(value);
+    }
+
+    opts = opts
+        .skip_whitespace_tail_rows(skip_whitespace_tail_rows)
+        .whitespace_as_null(whitespace_as_null);
 
     if let Some(selection) = range.as_str() {
         if !selection.is_empty() && selection != "NA" {
@@ -52,6 +83,50 @@ fn read_excel_columns(
     }
 
     Ok(List::from_pairs(pairs))
+}
+
+fn optional_positive_integer(value: Robj) -> Result<Option<usize>> {
+    optional_integer(value, false)
+}
+
+fn optional_non_negative_integer(value: Robj) -> Result<Option<usize>> {
+    optional_integer(value, true)
+}
+
+fn optional_integer(value: Robj, zero_allowed: bool) -> Result<Option<usize>> {
+    match value.as_integer() {
+        Some(value) if value == i32::MIN => Ok(None),
+        Some(value) if value > 0 || (zero_allowed && value == 0) => Ok(Some(value as usize)),
+        Some(_) => Err(Error::Other("invalid row count option".to_string())),
+        None => Ok(None),
+    }
+}
+
+fn dtypes_from_robj(dtypes: &Robj) -> Result<Option<DTypes>> {
+    let Some(values) = dtypes.as_str_vector() else {
+        return Ok(None);
+    };
+
+    if values.is_empty() || (values.len() == 1 && values[0] == "NA") {
+        return Ok(None);
+    }
+
+    let names = dtypes.names().map(|names| names.collect::<Vec<_>>());
+    if values.len() == 1 && names.is_none() {
+        return Ok(Some(DTypes::All(
+            DType::from_str(&values[0]).map_err(to_r_error)?,
+        )));
+    }
+
+    let names = names.ok_or_else(|| Error::Other("named `dtypes` require column names".to_string()))?;
+    let mut map = HashMap::with_capacity(values.len());
+    for (name, dtype) in names.into_iter().zip(values.into_iter()) {
+        map.insert(
+            IdxOrName::Name(name.to_string()),
+            DType::from_str(&dtype).map_err(to_r_error)?,
+        );
+    }
+    Ok(Some(DTypes::Map(map)))
 }
 
 #[extendr]

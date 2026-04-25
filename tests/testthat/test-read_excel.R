@@ -70,6 +70,40 @@ test_that("read_excel accepts workbook bytes", {
   expect_equal(names(df), expected_names)
 })
 
+test_that("sheet loading options are passed through", {
+  skip_if_not_installed("arrow")
+
+  skipped <- read_excel(
+    fixture(),
+    col_names = expected_names,
+    skip_rows = 2,
+    as = "data.frame"
+  )
+  expect_equal(dim(skipped), c(5L, 5L))
+  expect_equal(names(skipped), expected_names)
+
+  sampled <- read_excel(
+    fixture(),
+    header_row = NULL,
+    schema_sample_rows = 1,
+    dtype_coercion = "coerce",
+    as = "data.frame"
+  )
+  expect_equal(dim(sampled), c(6L, 5L))
+
+  typed <- read_excel(fixture(), dtypes = c(Year = "string"), as = "data.frame")
+  expect_type(typed$Year, "character")
+})
+
+test_that("dtype overrides can apply to all selected columns", {
+  skip_if_not_installed("arrow")
+
+  out <- read_excel(fixture(), range = "A:B", dtypes = "string", as = "data.frame")
+
+  expect_equal(names(out), expected_names[1:2])
+  expect_type(out$Year, "character")
+})
+
 test_that("metadata helpers accept workbook bytes", {
   bytes <- readBin(fixture(), what = "raw", n = file.info(fixture())$size)
 
@@ -88,4 +122,9 @@ test_that("errors are clear", {
   expect_error(read_excel("does-not-exist.xlsx"), "could not load excel file|No such file|not found")
   expect_error(read_excel(fixture(), sheet = "Missing"), "sheet|Missing")
   expect_error(read_excel(fixture(), range = "not a range"), "range|column|selection|Invalid")
+  expect_error(read_excel(fixture(), header_row = 0), "header_row")
+  expect_error(read_excel(fixture(), skip_rows = -1), "skip_rows")
+  expect_error(read_excel(fixture(), schema_sample_rows = 0), "schema_sample_rows")
+  expect_error(read_excel(fixture(), dtype_coercion = "invalid"), "one of")
+  expect_error(read_excel(fixture(), dtypes = "invalid"), "Unsupported dtype")
 })

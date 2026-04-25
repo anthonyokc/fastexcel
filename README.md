@@ -10,6 +10,8 @@ uses ToucanToco's Rust `fastexcel` crate and returns Arrow-first results in R.
 - Convert results to a tibble, data frame, or vectors when needed.
 - Select sheets by 1-based index or sheet name.
 - Read column ranges such as `"A:A"` and `"A:D"`.
+- Control header rows, skipped rows, schema sampling, dtype coercion, and
+  whitespace handling.
 - Inspect workbook metadata with sheet, table, and defined-name helpers.
 
 ## Requirements
@@ -100,7 +102,14 @@ read_excel(
   sheet = 1,
   range = NULL,
   col_names = TRUE,
+  header_row = 1L,
+  skip_rows = NULL,
   n_max = Inf,
+  schema_sample_rows = NULL,
+  dtype_coercion = c("coerce", "strict"),
+  dtypes = NULL,
+  skip_whitespace_tail_rows = FALSE,
+  whitespace_as_null = FALSE,
   as = c("arrow", "tibble", "data.frame", "vector")
 )
 ```
@@ -111,7 +120,15 @@ read_excel(
   column selectors such as `"A:A"` and `"A:D"`.
 - `col_names`: `TRUE` to use the first row as names, `FALSE` to generate names,
   or a character vector of explicit names.
+- `header_row`: 1-based row containing column names when `col_names = TRUE`.
+- `skip_rows`: number of rows to skip after the header row.
 - `n_max`: maximum number of data rows to read.
+- `schema_sample_rows`: number of rows to sample for schema inference.
+- `dtype_coercion`: `"coerce"` or `"strict"` handling for mismatched values.
+- `dtypes`: optional dtype override, either a single dtype string or a named
+  character vector mapping columns to dtype strings.
+- `skip_whitespace_tail_rows`: whether trailing whitespace/null rows are ignored.
+- `whitespace_as_null`: whether whitespace-only strings are treated as missing.
 - `as`: output type.
 
 ### Metadata Helpers
@@ -145,15 +162,15 @@ Legend: ✅ implemented, ◐ partially implemented, ❌ not implemented.
 | List defined names / named ranges | `excel_defined_names(path)` or `excel_defined_names(raw_bytes)` | ✅ |
 | Primitive dtype conversion | bool/string/int/float/date/datetime/duration handled in Rust bridge | ✅ |
 | Supported workbook formats from upstream `fastexcel`/`calamine` | Uses upstream `fastexcel::read_excel(path)` | ✅ |
-| Arbitrary `header_row` index | Not exposed | ❌ |
-| `skip_rows` | Not exposed | ❌ |
-| `schema_sample_rows` | Not exposed | ❌ |
-| `dtype_coercion = "coerce"/"strict"` | Not exposed | ❌ |
-| Explicit `dtypes` / dtype map | Not exposed | ❌ |
+| Arbitrary `header_row` index | `header_row`, using 1-based R row numbers | ✅ |
+| `skip_rows` | `skip_rows` for fixed row counts | ◐ |
+| `schema_sample_rows` | `schema_sample_rows` | ✅ |
+| `dtype_coercion = "coerce"/"strict"` | `dtype_coercion` | ✅ |
+| Explicit `dtypes` / dtype map | `dtypes = "string"` or named character vector | ✅ |
 | Select columns by list of names/indices | Not exposed as R vectors | ❌ |
 | Select columns by callback | Not applicable/exposed | ❌ |
-| `skip_whitespace_tail_rows` | Not exposed | ❌ |
-| `whitespace_as_null` | Not exposed | ❌ |
+| `skip_whitespace_tail_rows` | `skip_whitespace_tail_rows` | ✅ |
+| `whitespace_as_null` | `whitespace_as_null` | ✅ |
 | Lazy `ExcelReader` object | R API opens internally per call | ❌ |
 | Lazy `ExcelSheet` object | Not exposed | ❌ |
 | `ExcelSheet` metadata: name, width, height, total height, visibility | Not exposed | ❌ |
