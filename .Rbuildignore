@@ -1,7 +1,10 @@
 ^\.git$
 ^\.gitignore$
+^\.github$
 ^\.Rprofile$
 ^\.Rbuildignore$
+^_pkgdown\.yml$
+^docs$
 ^\.Rcheck$
 ^\.\.Rcheck$
 \.Rcheck$
@@ -10,4 +13,3 @@
 ^src/.*\.o$
 ^src/.*\.so$
 ^src/rust/target$
-^src/rust/Cargo\.lock$
