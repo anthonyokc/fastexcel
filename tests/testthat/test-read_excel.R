@@ -112,6 +112,28 @@ test_that("metadata helpers accept workbook bytes", {
   expect_s3_class(excel_defined_names(bytes), "data.frame")
 })
 
+test_that("workbooks are rejected when they exceed the configured size limit", {
+  old <- options(fastexcel.max_workbook_size = 1)
+  on.exit(options(old))
+
+  expect_error(read_excel(fixture()), "fastexcel.max_workbook_size")
+  expect_error(excel_sheets(as.raw(c(1, 2))), "fastexcel.max_workbook_size")
+})
+
+test_that("ZIP preflight limits are configurable", {
+  old <- options(fastexcel.max_zip_entries = 1)
+  on.exit(options(old))
+
+  expect_error(excel_sheets(fixture()), "ZIP contains")
+})
+
+test_that("ZIP preflight options must be positive numbers", {
+  old <- options(fastexcel.max_zip_total_size = 0)
+  on.exit(options(old))
+
+  expect_error(excel_sheets(fixture()), "fastexcel.max_zip_total_size")
+})
+
 test_that("supporting workbook metadata functions work", {
   expect_equal(excel_sheets(fixture()), "Sheet1")
   expect_type(excel_tables(fixture()), "character")

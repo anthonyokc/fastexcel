@@ -190,6 +190,7 @@ dependencies = [
  "chrono",
  "extendr-api",
  "fastexcel",
+ "zip",
 ]
 
 [[package]]

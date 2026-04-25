@@ -72,6 +72,7 @@ read_excel <- function(path,
 
   columns <- .read_excel_columns(
     path,
+    zip_limits(),
     sheet,
     range,
     col_names,
@@ -105,7 +106,7 @@ read_excel <- function(path,
 #' @return A character vector of sheet names.
 #' @export
 excel_sheets <- function(path) {
-  .excel_sheets(validate_source(path))
+  .excel_sheets(validate_source(path), zip_limits())
 }
 
 #' List table names in an Excel workbook
@@ -122,7 +123,7 @@ excel_tables <- function(path, sheet = NULL) {
   } else if (!is.character(sheet) || length(sheet) != 1L || is.na(sheet)) {
     stop("`sheet` must be NULL or a single sheet name.", call. = FALSE)
   }
-  .excel_tables(path, sheet)
+  .excel_tables(path, zip_limits(), sheet)
 }
 
 #' List defined names in an Excel workbook
@@ -132,7 +133,7 @@ excel_tables <- function(path, sheet = NULL) {
 #' @return A data frame with defined-name metadata.
 #' @export
 excel_defined_names <- function(path) {
-  out <- .excel_defined_names(validate_source(path))
+  out <- .excel_defined_names(validate_source(path), zip_limits())
   data.frame(
     name = out$name,
     formula = out$formula,
@@ -157,13 +158,55 @@ record_batch_to_vectors <- function(batch) {
 }
 
 validate_source <- function(path) {
+  max_size <- max_workbook_size()
   if (is.raw(path) && length(path) > 0L) {
+    check_workbook_size(length(path), max_size)
     return(path)
   }
   if (!is.character(path) || length(path) != 1L || is.na(path) || !nzchar(path)) {
     stop("`path` must be a single non-empty string or a non-empty raw vector.", call. = FALSE)
   }
+  info <- file.info(path)
+  if (!is.na(info$size)) {
+    check_workbook_size(info$size, max_size)
+  }
   path
+}
+
+max_workbook_size <- function() {
+  max_size <- getOption("fastexcel.max_workbook_size", 100 * 1024^2)
+  if (!is.numeric(max_size) || length(max_size) != 1L || is.na(max_size) || max_size <= 0) {
+    stop("Option `fastexcel.max_workbook_size` must be a positive number of bytes.", call. = FALSE)
+  }
+  max_size
+}
+
+check_workbook_size <- function(size, max_size) {
+  if (size > max_size) {
+    stop(
+      "Workbook is larger than the configured `fastexcel.max_workbook_size` limit of ",
+      format(max_size, big.mark = ",", scientific = FALSE),
+      " bytes.",
+      call. = FALSE
+    )
+  }
+}
+
+zip_limits <- function() {
+  c(
+    max_entries = positive_number_option("fastexcel.max_zip_entries", 10000),
+    max_entry_size = positive_number_option("fastexcel.max_zip_entry_size", 2 * 1024^3),
+    max_total_size = positive_number_option("fastexcel.max_zip_total_size", 8 * 1024^3),
+    max_compression_ratio = positive_number_option("fastexcel.max_zip_compression_ratio", 100)
+  )
+}
+
+positive_number_option <- function(name, default) {
+  value <- getOption(name, default)
+  if (!is.numeric(value) || length(value) != 1L || is.na(value) || value < 1 || value != floor(value)) {
+    stop("Option `", name, "` must be a positive whole number.", call. = FALSE)
+  }
+  value
 }
 
 validate_sheet <- function(sheet) {

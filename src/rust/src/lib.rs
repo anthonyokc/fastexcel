@@ -5,11 +5,28 @@ use fastexcel_rs::{
     LoadSheetOrTableOptions, SelectedColumns, SkipRows,
 };
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::{Cursor, Read, Seek};
 use std::str::FromStr;
+use zip::result::ZipError;
+use zip::ZipArchive;
+
+const ZIP_MAGIC: &[u8; 4] = b"PK\x03\x04";
+const EMPTY_ZIP_MAGIC: &[u8; 4] = b"PK\x05\x06";
+const SPANNED_ZIP_MAGIC: &[u8; 4] = b"PK\x07\x08";
+
+struct ZipLimits {
+    max_entries: usize,
+    max_entry_size: u64,
+    max_total_size: u64,
+    max_compression_ratio: u64,
+}
 
 #[extendr]
+#[allow(clippy::too_many_arguments)]
 fn read_excel_columns(
     source: Robj,
+    zip_limits: Robj,
     sheet: Robj,
     range: Robj,
     col_names: Robj,
@@ -22,7 +39,7 @@ fn read_excel_columns(
     skip_whitespace_tail_rows: bool,
     whitespace_as_null: bool,
 ) -> Result<List> {
-    let mut reader = reader_from_source(source)?;
+    let mut reader = reader_from_source(source, zip_limits)?;
     let mut opts = LoadSheetOrTableOptions::new_for_sheet();
 
     if col_names.as_bool() == Some(false) {
@@ -114,7 +131,7 @@ fn dtypes_from_robj(dtypes: &Robj) -> Result<Option<DTypes>> {
     let names = dtypes.names().map(|names| names.collect::<Vec<_>>());
     if values.len() == 1 && names.is_none() {
         return Ok(Some(DTypes::All(
-            DType::from_str(&values[0]).map_err(to_r_error)?,
+            DType::from_str(values[0]).map_err(to_r_error)?,
         )));
     }
 
@@ -123,21 +140,21 @@ fn dtypes_from_robj(dtypes: &Robj) -> Result<Option<DTypes>> {
     for (name, dtype) in names.into_iter().zip(values.into_iter()) {
         map.insert(
             IdxOrName::Name(name.to_string()),
-            DType::from_str(&dtype).map_err(to_r_error)?,
+            DType::from_str(dtype).map_err(to_r_error)?,
         );
     }
     Ok(Some(DTypes::Map(map)))
 }
 
 #[extendr]
-fn excel_sheets(source: Robj) -> Result<Vec<String>> {
-    let reader = reader_from_source(source)?;
+fn excel_sheets(source: Robj, zip_limits: Robj) -> Result<Vec<String>> {
+    let reader = reader_from_source(source, zip_limits)?;
     Ok(reader.sheet_names().into_iter().map(String::from).collect())
 }
 
 #[extendr]
-fn excel_tables(source: Robj, sheet: Robj) -> Result<Vec<String>> {
-    let mut reader = reader_from_source(source)?;
+fn excel_tables(source: Robj, zip_limits: Robj, sheet: Robj) -> Result<Vec<String>> {
+    let mut reader = reader_from_source(source, zip_limits)?;
     let sheet_name = sheet.as_str().filter(|s| !s.is_empty() && *s != "NA");
     Ok(reader
         .table_names(sheet_name)
@@ -148,13 +165,13 @@ fn excel_tables(source: Robj, sheet: Robj) -> Result<Vec<String>> {
 }
 
 #[extendr]
-fn excel_defined_names(source: Robj) -> Result<List> {
-    let mut reader = reader_from_source(source)?;
+fn excel_defined_names(source: Robj, zip_limits: Robj) -> Result<List> {
+    let mut reader = reader_from_source(source, zip_limits)?;
     let names = reader.defined_names().map_err(to_r_error)?;
 
     let name_values: Vec<String> = names.iter().map(|item| item.name.to_string()).collect();
     let formula_values: Vec<String> = names.iter().map(|item| item.formula.to_string()).collect();
-    let sheet_values: Vec<String> = std::iter::repeat(String::new()).take(names.len()).collect();
+    let sheet_values: Vec<String> = std::iter::repeat_n(String::new(), names.len()).collect();
 
     Ok(list!(
         name = name_values,
@@ -163,12 +180,16 @@ fn excel_defined_names(source: Robj) -> Result<List> {
     ))
 }
 
-fn reader_from_source(source: Robj) -> Result<ExcelReader> {
+fn reader_from_source(source: Robj, zip_limits: Robj) -> Result<ExcelReader> {
+    let zip_limits = parse_zip_limits(zip_limits)?;
+
     if let Some(path) = source.as_str() {
+        preflight_zip_path(path, &zip_limits)?;
         return read_excel(path).map_err(to_r_error);
     }
 
     if let Some(bytes) = source.as_raw_slice() {
+        preflight_zip_bytes(bytes, &zip_limits)?;
         return ExcelReader::try_from(bytes).map_err(|err| {
             Error::Other(format!("could not load excel file from raw bytes: {err}"))
         });
@@ -177,6 +198,99 @@ fn reader_from_source(source: Robj) -> Result<ExcelReader> {
     Err(Error::Other(
         "`path` must be a single non-empty string or a raw vector.".to_string(),
     ))
+}
+
+fn parse_zip_limits(zip_limits: Robj) -> Result<ZipLimits> {
+    let values = zip_limits.as_real_vector().ok_or_else(|| {
+        Error::Other("ZIP preflight limits must be a numeric vector".to_string())
+    })?;
+    if values.len() != 4 || values.iter().any(|value| !value.is_finite() || *value <= 0.0) {
+        return Err(Error::Other(
+            "ZIP preflight limits must contain four positive finite numbers".to_string(),
+        ));
+    }
+
+    Ok(ZipLimits {
+        max_entries: values[0] as usize,
+        max_entry_size: values[1] as u64,
+        max_total_size: values[2] as u64,
+        max_compression_ratio: values[3] as u64,
+    })
+}
+
+fn preflight_zip_path(path: &str, limits: &ZipLimits) -> Result<()> {
+    let mut file = match File::open(path) {
+        Ok(file) => file,
+        Err(_) => return Ok(()),
+    };
+    let mut magic = [0_u8; 4];
+    if file.read_exact(&mut magic).is_err() || !is_zip_magic(&magic) {
+        return Ok(());
+    }
+    preflight_zip(file, limits)
+}
+
+fn preflight_zip_bytes(bytes: &[u8], limits: &ZipLimits) -> Result<()> {
+    if bytes.len() < 4 || !is_zip_magic(&bytes[..4]) {
+        return Ok(());
+    }
+    preflight_zip(Cursor::new(bytes), limits)
+}
+
+fn is_zip_magic(magic: &[u8]) -> bool {
+    magic == ZIP_MAGIC || magic == EMPTY_ZIP_MAGIC || magic == SPANNED_ZIP_MAGIC
+}
+
+fn preflight_zip<R>(reader: R, limits: &ZipLimits) -> Result<()>
+where
+    R: Read + Seek,
+{
+    let mut archive = ZipArchive::new(reader).map_err(zip_preflight_error)?;
+    if archive.len() > limits.max_entries {
+        return Err(Error::Other(format!(
+            "Workbook ZIP contains {} entries, exceeding the limit of {}.",
+            archive.len(),
+            limits.max_entries
+        )));
+    }
+
+    let mut total_uncompressed = 0_u64;
+    for idx in 0..archive.len() {
+        let file = archive.by_index(idx).map_err(zip_preflight_error)?;
+        let uncompressed_size = file.size();
+        let compressed_size = file.compressed_size();
+
+        if uncompressed_size > limits.max_entry_size {
+            return Err(Error::Other(format!(
+                "Workbook ZIP entry `{}` expands to {} bytes, exceeding the per-entry limit of {} bytes.",
+                file.name(),
+                uncompressed_size,
+                limits.max_entry_size
+            )));
+        }
+
+        total_uncompressed = total_uncompressed.saturating_add(uncompressed_size);
+        if total_uncompressed > limits.max_total_size {
+            return Err(Error::Other(format!(
+                "Workbook ZIP expands to more than {} bytes, exceeding the total uncompressed limit.",
+                limits.max_total_size
+            )));
+        }
+
+        if compressed_size > 0 && uncompressed_size / compressed_size > limits.max_compression_ratio {
+            return Err(Error::Other(format!(
+                "Workbook ZIP entry `{}` has a suspicious compression ratio greater than {}:1.",
+                file.name(),
+                limits.max_compression_ratio
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+fn zip_preflight_error(err: ZipError) -> Error {
+    Error::Other(format!("could not inspect workbook ZIP metadata: {err}"))
 }
 
 fn sheet_to_idx_or_name(sheet: Robj) -> Result<IdxOrName> {
@@ -242,7 +356,7 @@ fn series_to_robj(series: &FastExcelSeries, len: usize) -> Result<Robj> {
 }
 
 fn null_logical_vector(len: usize) -> Robj {
-    let values: Vec<Rbool> = std::iter::repeat(Rbool::na()).take(len).collect();
+    let values: Vec<Rbool> = std::iter::repeat_n(Rbool::na(), len).collect();
     Robj::from(values)
 }
 
@@ -288,7 +402,7 @@ fn integer_or_numeric_vector(values: &[Option<i64>]) -> Robj {
 }
 
 fn numeric_vector(values: &[Option<f64>]) -> Robj {
-    Robj::from(values.iter().copied().collect::<Vec<_>>())
+    Robj::from(values.to_vec())
 }
 
 fn date_vector(values: &[Option<NaiveDate>]) -> Result<Robj> {
