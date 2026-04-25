@@ -59,6 +59,25 @@ test_that("sheet selection works by index and name", {
   expect_equal(by_index, by_name)
 })
 
+test_that("read_excel accepts workbook bytes", {
+  skip_if_not_installed("arrow")
+
+  bytes <- readBin(fixture(), what = "raw", n = file.info(fixture())$size)
+  df <- read_excel(bytes, as = "data.frame")
+
+  expect_s3_class(df, "data.frame")
+  expect_equal(dim(df), c(6L, 5L))
+  expect_equal(names(df), expected_names)
+})
+
+test_that("metadata helpers accept workbook bytes", {
+  bytes <- readBin(fixture(), what = "raw", n = file.info(fixture())$size)
+
+  expect_equal(excel_sheets(bytes), "Sheet1")
+  expect_type(excel_tables(bytes), "character")
+  expect_s3_class(excel_defined_names(bytes), "data.frame")
+})
+
 test_that("supporting workbook metadata functions work", {
   expect_equal(excel_sheets(fixture()), "Sheet1")
   expect_type(excel_tables(fixture()), "character")

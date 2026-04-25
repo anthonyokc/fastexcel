@@ -3,7 +3,8 @@
 #' Reads a worksheet from an Excel workbook and returns an Arrow `RecordBatch`
 #' by default.
 #'
-#' @param path Path to an Excel workbook.
+#' @param path Path to an Excel workbook, or a raw vector containing workbook
+#'   bytes.
 #' @param sheet Worksheet to read, either as a 1-based sheet index or a sheet
 #'   name.
 #' @param range Optional Excel-style column range, such as `"A:A"` for one
@@ -33,7 +34,7 @@ read_excel <- function(path,
                        n_max = Inf,
                        as = c("arrow", "tibble", "data.frame", "vector")) {
   as <- match.arg(as)
-  path <- validate_path(path)
+  path <- validate_source(path)
   sheet <- validate_sheet(sheet)
   range <- validate_range(range)
   col_names <- validate_col_names(col_names)
@@ -56,21 +57,23 @@ read_excel <- function(path,
 
 #' List sheet names in an Excel workbook
 #'
-#' @param path Path to an Excel workbook.
+#' @param path Path to an Excel workbook, or a raw vector containing workbook
+#'   bytes.
 #' @return A character vector of sheet names.
 #' @export
 excel_sheets <- function(path) {
-  .excel_sheets(validate_path(path))
+  .excel_sheets(validate_source(path))
 }
 
 #' List table names in an Excel workbook
 #'
-#' @param path Path to an Excel workbook.
+#' @param path Path to an Excel workbook, or a raw vector containing workbook
+#'   bytes.
 #' @param sheet Optional sheet name used to limit results to one worksheet.
 #' @return A character vector of table names.
 #' @export
 excel_tables <- function(path, sheet = NULL) {
-  path <- validate_path(path)
+  path <- validate_source(path)
   if (is.null(sheet)) {
     sheet <- NA_character_
   } else if (!is.character(sheet) || length(sheet) != 1L || is.na(sheet)) {
@@ -81,11 +84,12 @@ excel_tables <- function(path, sheet = NULL) {
 
 #' List defined names in an Excel workbook
 #'
-#' @param path Path to an Excel workbook.
+#' @param path Path to an Excel workbook, or a raw vector containing workbook
+#'   bytes.
 #' @return A data frame with defined-name metadata.
 #' @export
 excel_defined_names <- function(path) {
-  out <- .excel_defined_names(validate_path(path))
+  out <- .excel_defined_names(validate_source(path))
   data.frame(
     name = out$name,
     formula = out$formula,
@@ -109,9 +113,12 @@ record_batch_to_vectors <- function(batch) {
   }
 }
 
-validate_path <- function(path) {
+validate_source <- function(path) {
+  if (is.raw(path) && length(path) > 0L) {
+    return(path)
+  }
   if (!is.character(path) || length(path) != 1L || is.na(path) || !nzchar(path)) {
-    stop("`path` must be a single non-empty string.", call. = FALSE)
+    stop("`path` must be a single non-empty string or a non-empty raw vector.", call. = FALSE)
   }
   path
 }

@@ -6,7 +6,7 @@ read_excel(path, sheet = 1, range = NULL, col_names = TRUE, n_max = Inf,
   as = c("arrow", "tibble", "data.frame", "vector"))
 }
 \arguments{
-\item{path}{Path to an Excel workbook.}
+\item{path}{Path to an Excel workbook, or a raw vector containing workbook bytes.}
 \item{sheet}{Worksheet to read, either as a 1-based sheet index or a sheet name.}
 \item{range}{Optional Excel-style column range, such as \code{"A:A"} for one column or \code{"A:D"} for multiple columns.}
 \item{col_names}{\code{TRUE} to use the first row as names, \code{FALSE} to generate names, or a character vector of explicit names.}

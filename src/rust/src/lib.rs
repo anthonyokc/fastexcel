@@ -1,17 +1,19 @@
 use chrono::{NaiveDate, NaiveDateTime, Timelike};
 use extendr_api::prelude::*;
-use fastexcel_rs::{read_excel, FastExcelSeries, IdxOrName, LoadSheetOrTableOptions, SelectedColumns};
+use fastexcel_rs::{
+    read_excel, ExcelReader, FastExcelSeries, IdxOrName, LoadSheetOrTableOptions, SelectedColumns,
+};
 use std::str::FromStr;
 
 #[extendr]
 fn read_excel_columns(
-    path: &str,
+    source: Robj,
     sheet: Robj,
     range: Robj,
     col_names: Robj,
     n_max: Robj,
 ) -> Result<List> {
-    let mut reader = read_excel(path).map_err(to_r_error)?;
+    let mut reader = reader_from_source(source)?;
     let mut opts = LoadSheetOrTableOptions::new_for_sheet();
 
     if col_names.as_bool() == Some(false) {
@@ -53,14 +55,14 @@ fn read_excel_columns(
 }
 
 #[extendr]
-fn excel_sheets(path: &str) -> Result<Vec<String>> {
-    let reader = read_excel(path).map_err(to_r_error)?;
+fn excel_sheets(source: Robj) -> Result<Vec<String>> {
+    let reader = reader_from_source(source)?;
     Ok(reader.sheet_names().into_iter().map(String::from).collect())
 }
 
 #[extendr]
-fn excel_tables(path: &str, sheet: Robj) -> Result<Vec<String>> {
-    let mut reader = read_excel(path).map_err(to_r_error)?;
+fn excel_tables(source: Robj, sheet: Robj) -> Result<Vec<String>> {
+    let mut reader = reader_from_source(source)?;
     let sheet_name = sheet.as_str().filter(|s| !s.is_empty() && *s != "NA");
     Ok(reader
         .table_names(sheet_name)
@@ -71,8 +73,8 @@ fn excel_tables(path: &str, sheet: Robj) -> Result<Vec<String>> {
 }
 
 #[extendr]
-fn excel_defined_names(path: &str) -> Result<List> {
-    let mut reader = read_excel(path).map_err(to_r_error)?;
+fn excel_defined_names(source: Robj) -> Result<List> {
+    let mut reader = reader_from_source(source)?;
     let names = reader.defined_names().map_err(to_r_error)?;
 
     let name_values: Vec<String> = names.iter().map(|item| item.name.to_string()).collect();
@@ -83,6 +85,22 @@ fn excel_defined_names(path: &str) -> Result<List> {
         name = name_values,
         formula = formula_values,
         sheet_name = sheet_values
+    ))
+}
+
+fn reader_from_source(source: Robj) -> Result<ExcelReader> {
+    if let Some(path) = source.as_str() {
+        return read_excel(path).map_err(to_r_error);
+    }
+
+    if let Some(bytes) = source.as_raw_slice() {
+        return ExcelReader::try_from(bytes).map_err(|err| {
+            Error::Other(format!("could not load excel file from raw bytes: {err}"))
+        });
+    }
+
+    Err(Error::Other(
+        "`path` must be a single non-empty string or a raw vector.".to_string(),
     ))
 }
 
@@ -104,7 +122,9 @@ fn sheet_to_idx_or_name(sheet: Robj) -> Result<IdxOrName> {
 
 fn selected_columns_from_range(selection: &str) -> Result<SelectedColumns> {
     if let Some((start, end)) = selection.split_once(':') {
-        if let (Some(start_idx), Some(end_idx)) = (column_label_to_idx(start), column_label_to_idx(end)) {
+        if let (Some(start_idx), Some(end_idx)) =
+            (column_label_to_idx(start), column_label_to_idx(end))
+        {
             let (first, last) = if start_idx <= end_idx {
                 (start_idx, end_idx)
             } else {
@@ -193,12 +213,7 @@ fn integer_or_numeric_vector(values: &[Option<i64>]) -> Robj {
 }
 
 fn numeric_vector(values: &[Option<f64>]) -> Robj {
-    Robj::from(
-        values
-            .iter()
-            .copied()
-            .collect::<Vec<_>>(),
-    )
+    Robj::from(values.iter().copied().collect::<Vec<_>>())
 }
 
 fn date_vector(values: &[Option<NaiveDate>]) -> Result<Robj> {
@@ -207,7 +222,11 @@ fn date_vector(values: &[Option<NaiveDate>]) -> Result<Robj> {
     let mut out = Robj::from(
         values
             .iter()
-            .map(|value| value.map(|value| (value - epoch).num_days() as f64).or(NA_REAL))
+            .map(|value| {
+                value
+                    .map(|value| (value - epoch).num_days() as f64)
+                    .or(NA_REAL)
+            })
             .collect::<Vec<_>>(),
     );
     out.set_class(&["Date"])?;
@@ -220,7 +239,9 @@ fn datetime_vector(values: &[Option<NaiveDateTime>]) -> Result<Robj> {
             .iter()
             .map(|value| {
                 value
-                    .map(|value| value.and_utc().timestamp() as f64 + f64::from(value.nanosecond()) / 1e9)
+                    .map(|value| {
+                        value.and_utc().timestamp() as f64 + f64::from(value.nanosecond()) / 1e9
+                    })
                     .or(NA_REAL)
             })
             .collect::<Vec<_>>(),
@@ -234,7 +255,11 @@ fn duration_vector(values: &[Option<chrono::Duration>]) -> Robj {
     Robj::from(
         values
             .iter()
-            .map(|value| value.map(|value| value.num_milliseconds() as f64 / 1000.0).or(NA_REAL))
+            .map(|value| {
+                value
+                    .map(|value| value.num_milliseconds() as f64 / 1000.0)
+                    .or(NA_REAL)
+            })
             .collect::<Vec<_>>(),
     )
 }

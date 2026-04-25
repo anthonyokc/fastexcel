@@ -3,7 +3,7 @@
 \title{List table names in an Excel workbook}
 \usage{excel_tables(path, sheet = NULL)}
 \arguments{
-\item{path}{Path to an Excel workbook.}
+\item{path}{Path to an Excel workbook, or a raw vector containing workbook bytes.}
 \item{sheet}{Optional sheet name used to limit results to one worksheet.}
 }
 \value{A character vector of table names.}

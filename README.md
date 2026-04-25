@@ -6,6 +6,7 @@ uses ToucanToco's Rust `fastexcel` crate and returns Arrow-first results in R.
 ## Features
 
 - Read Excel worksheets into an `arrow::RecordBatch` by default.
+- Read from a local file path or in-memory workbook bytes.
 - Convert results to a tibble, data frame, or vectors when needed.
 - Select sheets by 1-based index or sheet name.
 - Read column ranges such as `"A:A"` and `"A:D"`.
@@ -75,6 +76,20 @@ excel_tables(path)
 excel_defined_names(path)
 ```
 
+Read workbook bytes, such as the raw vector returned by cloud storage clients:
+
+```r
+bytes <- readBin(path, what = "raw", n = file.info(path)$size)
+read_excel(bytes, as = "data.frame")
+```
+
+With `googleCloudStorageR`, pass the downloaded raw object directly:
+
+```r
+bytes <- googleCloudStorageR::gcs_get_object("path/to/file.xlsx")
+read_excel(bytes, as = "data.frame")
+```
+
 ## API
 
 ### `read_excel()`
@@ -90,7 +105,7 @@ read_excel(
 )
 ```
 
-- `path`: path to an Excel workbook.
+- `path`: path to an Excel workbook, or a raw vector containing workbook bytes.
 - `sheet`: 1-based sheet index or sheet name.
 - `range`: optional Excel-style range. The current implementation supports
   column selectors such as `"A:A"` and `"A:D"`.
@@ -113,8 +128,8 @@ Legend: ✅ implemented, ◐ partially implemented, ❌ not implemented.
 | Original `fastexcel` feature | Current R package | Status |
 |---|---:|---:|
 | Open Excel workbook from file path | `read_excel(path)` | ✅ |
-| Open workbook from bytes | Not exposed | ❌ |
-| List sheet names | `excel_sheets(path)` | ✅ |
+| Open workbook from bytes | `read_excel(raw_bytes)` | ✅ |
+| List sheet names | `excel_sheets(path)` or `excel_sheets(raw_bytes)` | ✅ |
 | Load sheet by index | `read_excel(path, sheet = 1)` using 1-based R index | ✅ |
 | Load sheet by name | `read_excel(path, sheet = "Sheet1")` | ✅ |
 | Return Arrow `RecordBatch` | `read_excel(..., as = "arrow")` default | ✅ |
@@ -125,9 +140,9 @@ Legend: ✅ implemented, ◐ partially implemented, ❌ not implemented.
 | Override column names | `col_names = c(...)` | ✅ |
 | Limit rows | `n_max` maps to upstream `n_rows` | ✅ |
 | Select columns by Excel range/string | `range`, documented for `A:A`, `A:D`; Rust path also delegates to upstream parser | ◐ |
-| List table names | `excel_tables(path)` | ✅ |
+| List table names | `excel_tables(path)` or `excel_tables(raw_bytes)` | ✅ |
 | Filter table names by sheet name | `excel_tables(path, sheet = "Sheet1")` | ✅ |
-| List defined names / named ranges | `excel_defined_names(path)` | ✅ |
+| List defined names / named ranges | `excel_defined_names(path)` or `excel_defined_names(raw_bytes)` | ✅ |
 | Primitive dtype conversion | bool/string/int/float/date/datetime/duration handled in Rust bridge | ✅ |
 | Supported workbook formats from upstream `fastexcel`/`calamine` | Uses upstream `fastexcel::read_excel(path)` | ✅ |
 | Arbitrary `header_row` index | Not exposed | ❌ |
