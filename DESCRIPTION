@@ -1,9 +1,9 @@
 Package: fastexcel
 Title: Fast Excel Reader Backed by Rust
 Version: 0.0.0.9000
-Authors@R: person("Anthony", role = c("aut", "cre"), email = "anthony@example.com")
-Author: Anthony [aut, cre]
-Maintainer: Anthony <anthony@example.com>
+Authors@R: person("Anthony Flores", role = c("aut", "cre"), email = "anthonyfloresokc@gmail.com")
+Author: Anthony Flores [aut, cre]
+Maintainer: Anthony Flores <anthonyfloresokc@gmail.com>
 Description: Reads Excel workbooks using the Rust 'fastexcel' crate from
     ToucanToco and returns Arrow-first results in R.
 License: MIT + file LICENSE
