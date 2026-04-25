@@ -7,7 +7,7 @@ Maintainer: Anthony Flores <anthonyfloresokc@gmail.com>
 Description: Reads Excel workbooks using the Rust 'fastexcel' crate from
     ToucanToco and returns Arrow-first results in R.
 License: MIT + file LICENSE
-URL: https://github.com/anthonyokc/fastexcel
+URL: https://anthonyokc.github.io/fastexcel/, https://github.com/anthonyokc/fastexcel
 BugReports: https://github.com/anthonyokc/fastexcel/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -17,6 +17,7 @@ Depends:
 Imports:
     arrow
 Suggests:
+    pkgdown,
     testthat (>= 3.0.0),
     tibble
 Config/testthat/edition: 3

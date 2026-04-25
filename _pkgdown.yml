@@ -1,0 +1,13 @@
+url: https://anthonyokc.github.io/fastexcel/
+template:
+  bootstrap: 5
+
+reference:
+  - title: Read Excel files
+    contents:
+      - read_excel
+  - title: Workbook metadata
+    contents:
+      - excel_sheets
+      - excel_tables
+      - excel_defined_names
