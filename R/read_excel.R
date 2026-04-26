@@ -9,6 +9,9 @@
 #'   name.
 #' @param range Optional Excel-style column range, such as `"A:A"` for one
 #'   column or `"A:D"` for multiple columns.
+#' @param columns Optional columns to select, as a character vector of column
+#'   names or a numeric vector of 1-based column positions. Cannot be combined
+#'   with `range`.
 #' @param col_names `TRUE` to use the first row as names, `FALSE` to generate
 #'   names, or a character vector of explicit names.
 #' @param header_row 1-based row containing column names when `col_names = TRUE`.
@@ -55,12 +58,17 @@ read_excel <- function(path,
                        dtypes = NULL,
                        skip_whitespace_tail_rows = FALSE,
                        whitespace_as_null = FALSE,
-                       as = c("arrow", "tibble", "data.frame", "vector")) {
+                       as = c("arrow", "tibble", "data.frame", "vector"),
+                       columns = NULL) {
   as <- match.arg(as)
   dtype_coercion <- match.arg(dtype_coercion)
   path <- validate_source(path)
   sheet <- validate_sheet(sheet)
   range <- validate_range(range)
+  columns <- validate_columns(columns)
+  if (!is.na(range) && !is.na(columns[[1L]])) {
+    stop("`range` and `columns` cannot be used together.", call. = FALSE)
+  }
   col_names <- validate_col_names(col_names)
   header_row <- validate_optional_row_count(header_row, "header_row", zero_allowed = FALSE)
   skip_rows <- validate_optional_row_count(skip_rows, "skip_rows", zero_allowed = TRUE)
@@ -75,6 +83,7 @@ read_excel <- function(path,
     zip_limits(),
     sheet,
     range,
+    columns,
     col_names,
     header_row,
     skip_rows,
@@ -227,6 +236,19 @@ validate_range <- function(range) {
     stop("`range` must be NULL or a single non-empty string.", call. = FALSE)
   }
   range
+}
+
+validate_columns <- function(columns) {
+  if (is.null(columns)) {
+    return(NA_integer_)
+  }
+  if (is.character(columns) && length(columns) > 0L && !anyNA(columns) && all(nzchar(columns))) {
+    return(columns)
+  }
+  if (is.numeric(columns) && length(columns) > 0L && all(is.finite(columns)) && all(columns == floor(columns)) && all(columns >= 1)) {
+    return(as.integer(columns))
+  }
+  stop("`columns` must be NULL, a non-empty character vector, or a non-empty numeric vector of positive integer positions.", call. = FALSE)
 }
 
 validate_col_names <- function(col_names) {

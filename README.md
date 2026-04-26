@@ -9,7 +9,8 @@ uses ToucanToco's Rust `fastexcel` crate and returns Arrow-first results in R.
 - Read from a local file path or in-memory workbook bytes.
 - Convert results to a tibble, data frame, or vectors when needed.
 - Select sheets by 1-based index or sheet name.
-- Read column ranges such as `"A:A"` and `"A:D"`.
+- Read column ranges such as `"A:A"` and `"A:D"`, or select columns by name
+  or position.
 - Control header rows, skipped rows, schema sampling, dtype coercion, and
   whitespace handling.
 - Inspect workbook metadata with sheet, table, and defined-name helpers.
@@ -68,6 +69,13 @@ Select a sheet by index or name:
 ```r
 read_excel(path, sheet = 1)
 read_excel(path, sheet = "Sheet1")
+```
+
+Select columns by name or 1-based position:
+
+```r
+read_excel(path, columns = c("city", "Year"))
+read_excel(path, columns = c(1, 2))
 ```
 
 Inspect workbook metadata:
@@ -161,7 +169,8 @@ read_excel(
   dtypes = NULL,
   skip_whitespace_tail_rows = FALSE,
   whitespace_as_null = FALSE,
-  as = c("arrow", "tibble", "data.frame", "vector")
+  as = c("arrow", "tibble", "data.frame", "vector"),
+  columns = NULL
 )
 ```
 
@@ -169,6 +178,8 @@ read_excel(
 - `sheet`: 1-based sheet index or sheet name.
 - `range`: optional Excel-style range. The current implementation supports
   column selectors such as `"A:A"` and `"A:D"`.
+- `columns`: optional character vector of column names or numeric vector of
+  1-based column positions. Cannot be combined with `range`.
 - `col_names`: `TRUE` to use the first row as names, `FALSE` to generate names,
   or a character vector of explicit names.
 - `header_row`: 1-based row containing column names when `col_names = TRUE`.
@@ -218,7 +229,7 @@ Legend: ✅ implemented, ◐ partially implemented, ❌ not implemented.
 | `schema_sample_rows` | `schema_sample_rows` | ✅ |
 | `dtype_coercion = "coerce"/"strict"` | `dtype_coercion` | ✅ |
 | Explicit `dtypes` / dtype map | `dtypes = "string"` or named character vector | ✅ |
-| Select columns by list of names/indices | Not exposed as R vectors | ❌ |
+| Select columns by list of names/indices | `columns = c("name")` or `columns = c(1, 2)` | ✅ |
 | Select columns by callback | Not applicable/exposed | ❌ |
 | `skip_whitespace_tail_rows` | `skip_whitespace_tail_rows` | ✅ |
 | `whitespace_as_null` | `whitespace_as_null` | ✅ |

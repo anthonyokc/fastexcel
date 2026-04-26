@@ -29,6 +29,7 @@ fn read_excel_columns(
     zip_limits: Robj,
     sheet: Robj,
     range: Robj,
+    columns: Robj,
     col_names: Robj,
     header_row: Robj,
     skip_rows: Robj,
@@ -80,6 +81,10 @@ fn read_excel_columns(
         if !selection.is_empty() && selection != "NA" {
             opts = opts.selected_columns(selected_columns_from_range(selection)?);
         }
+    }
+
+    if let Some(selection) = selected_columns_from_robj(&columns)? {
+        opts = opts.selected_columns(selection);
     }
 
     let idx_or_name = sheet_to_idx_or_name(sheet)?;
@@ -327,6 +332,28 @@ fn selected_columns_from_range(selection: &str) -> Result<SelectedColumns> {
 
     SelectedColumns::from_str(selection)
         .map_err(|err| Error::Other(format!("invalid range `{selection}`: {err}")))
+}
+
+fn selected_columns_from_robj(columns: &Robj) -> Result<Option<SelectedColumns>> {
+    if let Some(names) = columns.as_str_vector() {
+        if names.len() == 1 && names[0] == "NA" {
+            return Ok(None);
+        }
+        return Ok(Some(SelectedColumns::Selection(
+            names.into_iter().map(|name| IdxOrName::Name(name.to_string())).collect(),
+        )));
+    }
+
+    if let Some(indices) = columns.as_integer_vector() {
+        if indices.len() == 1 && indices[0] == i32::MIN {
+            return Ok(None);
+        }
+        return Ok(Some(SelectedColumns::Selection(
+            indices.into_iter().map(|idx| IdxOrName::Idx((idx - 1) as usize)).collect(),
+        )));
+    }
+
+    Ok(None)
 }
 
 fn column_label_to_idx(label: &str) -> Option<usize> {

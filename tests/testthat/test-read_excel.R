@@ -104,6 +104,16 @@ test_that("dtype overrides can apply to all selected columns", {
   expect_type(out$Year, "character")
 })
 
+test_that("columns can select by name or position", {
+  skip_if_not_installed("arrow")
+
+  by_name <- read_excel(fixture(), columns = c("city", "Year"), as = "data.frame")
+  by_position <- read_excel(fixture(), columns = c(1, 2), as = "data.frame")
+
+  expect_equal(names(by_name), expected_names[1:2])
+  expect_equal(by_position, by_name)
+})
+
 test_that("metadata helpers accept workbook bytes", {
   bytes <- readBin(fixture(), what = "raw", n = file.info(fixture())$size)
 
@@ -144,6 +154,8 @@ test_that("errors are clear", {
   expect_error(read_excel("does-not-exist.xlsx"), "could not load excel file|No such file|not found")
   expect_error(read_excel(fixture(), sheet = "Missing"), "sheet|Missing")
   expect_error(read_excel(fixture(), range = "not a range"), "range|column|selection|Invalid")
+  expect_error(read_excel(fixture(), range = "A:A", columns = 1), "range.*columns")
+  expect_error(read_excel(fixture(), columns = 0), "columns")
   expect_error(read_excel(fixture(), header_row = 0), "header_row")
   expect_error(read_excel(fixture(), skip_rows = -1), "skip_rows")
   expect_error(read_excel(fixture(), schema_sample_rows = 0), "schema_sample_rows")
