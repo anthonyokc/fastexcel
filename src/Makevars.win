@@ -10,6 +10,7 @@ all: $(SHLIB)
 $(SHLIB): $(STATLIB)
 
 $(STATLIB):
+	PATH="$(PATH);$(USERPROFILE)/.cargo/bin" rustc --version
 	PATH="$(PATH);$(USERPROFILE)/.cargo/bin" cargo build --lib --release --manifest-path=./rust/Cargo.toml --target-dir $(TARGET_DIR)
 
 clean:
