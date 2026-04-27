@@ -8,6 +8,8 @@ publish = false
 crate-type = ["staticlib"]
 
 [dependencies]
+arrow-array = { version = "56", features = ["ffi"] }
+arrow-schema = "56"
 chrono = "0.4"
 extendr-api = { version = "0.8", features = ["result_condition"] }
 fastexcel_rs = { package = "fastexcel", version = "0.20.1" }

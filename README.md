@@ -5,7 +5,7 @@ uses ToucanToco's Rust `fastexcel` crate and returns Arrow-first results in R.
 
 ## Features
 
-- Read Excel worksheets into an `arrow::RecordBatch` by default.
+- Read Excel worksheets into an `arrow::Table` by default.
 - Read from a local file path or in-memory workbook bytes.
 - Convert results to a tibble, data frame, or vectors when needed.
 - Select sheets by 1-based index or sheet name.
@@ -47,8 +47,16 @@ library(fastexcel)
 
 path <- system.file("extdata/Pop_Density.xlsx", package = "fastexcel")
 
-batch <- read_excel(path)
-batch
+table <- read_excel(path)
+table
+```
+
+Return explicit Arrow objects:
+
+```r
+read_excel(path, as = "arrow_table")
+read_excel(path, as = "arrow_record_batch")
+read_excel(path, range = "A:A", as = "arrow_array")
 ```
 
 Return a base data frame or tibble:
@@ -63,6 +71,10 @@ Read a single column as a vector:
 ```r
 read_excel(path, range = "A:A", as = "vector")
 ```
+
+`as = "arrow_array"` returns an Arrow array. `as = "vector"` returns a base R
+vector for one-column output or a named list of base R vectors for multi-column
+output.
 
 Select a sheet by index or name:
 
@@ -169,7 +181,7 @@ read_excel(
   dtypes = NULL,
   skip_whitespace_tail_rows = FALSE,
   whitespace_as_null = FALSE,
-  as = c("arrow", "tibble", "data.frame", "vector"),
+  as = c("arrow_table", "arrow_record_batch", "arrow_array", "tibble", "data.frame", "vector"),
   columns = NULL
 )
 ```
@@ -191,7 +203,9 @@ read_excel(
   character vector mapping columns to dtype strings.
 - `skip_whitespace_tail_rows`: whether trailing whitespace/null rows are ignored.
 - `whitespace_as_null`: whether whitespace-only strings are treated as missing.
-- `as`: output type.
+- `as`: output type. `"arrow_table"` is the default public tabular output,
+  `"arrow_record_batch"` is a lower-level Arrow option, and `"arrow_array"` is
+  valid only for one-column selections.
 
 ### Metadata Helpers
 
@@ -211,7 +225,9 @@ Legend: ✅ implemented, ◐ partially implemented, ❌ not implemented.
 | List sheet names | `excel_sheets(path)` or `excel_sheets(raw_bytes)` | ✅ |
 | Load sheet by index | `read_excel(path, sheet = 1)` using 1-based R index | ✅ |
 | Load sheet by name | `read_excel(path, sheet = "Sheet1")` | ✅ |
-| Return Arrow `RecordBatch` | `read_excel(..., as = "arrow")` default | ✅ |
+| Return Arrow `Table` | `read_excel(..., as = "arrow_table")` default | ✅ |
+| Return Arrow `RecordBatch` | `read_excel(..., as = "arrow_record_batch")` | ✅ |
+| Return Arrow `Array` | `read_excel(..., range = "A:A", as = "arrow_array")` | ✅ |
 | Convert to data frame-like output | `as = "data.frame"`, `as = "tibble"` | ✅ |
 | Return vectors/list of vectors | `as = "vector"` | ✅ |
 | Use first row as column names | `col_names = TRUE` | ✅ |

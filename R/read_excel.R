@@ -1,7 +1,7 @@
 #' Read an Excel sheet
 #'
-#' Reads a worksheet from an Excel workbook and returns an Arrow `RecordBatch`
-#' by default.
+#' Reads a worksheet from an Excel workbook and returns an Arrow `Table` by
+#' default.
 #'
 #' @param path Path to an Excel workbook, or a raw vector containing workbook
 #'   bytes.
@@ -31,17 +31,24 @@
 #'   only whitespace and null values.
 #' @param whitespace_as_null Whether string cells containing only whitespace are
 #'   treated as missing values.
-#' @param as Type of object to return: `"arrow"`, `"tibble"`, `"data.frame"`,
-#'   or `"vector"`.
+#' @param as Type of object to return: `"arrow_table"`,
+#'   `"arrow_record_batch"`, `"arrow_array"`, `"tibble"`, `"data.frame"`, or
+#'   `"vector"`.
 #'
-#' @return For `as = "arrow"`, an `arrow::RecordBatch`. For `as = "tibble"`, a
-#'   tibble. For `as = "data.frame"`, a base data frame. For `as = "vector"`, a
-#'   named list of vectors for multi-column output, or a bare vector when exactly
-#'   one column is selected.
+#' @return For `as = "arrow_table"`, an `arrow::Table`. For
+#'   `as = "arrow_record_batch"`, an `arrow::RecordBatch`. For
+#'   `as = "arrow_array"`, an `arrow::Array`, valid only when exactly one column
+#'   is selected. For `as = "tibble"`, a tibble. For `as = "data.frame"`, a base
+#'   data frame. For `as = "vector"`, a named list of base R vectors for
+#'   multi-column output, or a bare base R vector when exactly one column is
+#'   selected. `as = "arrow_array"` differs from `as = "vector"`: it returns an
+#'   Arrow array, not an R vector.
 #' @examples
 #' path <- system.file("extdata/Pop_Density.xlsx", package = "fastexcel")
 #' if (nzchar(path)) {
 #'   read_excel(path)
+#'   read_excel(path, as = "arrow_record_batch")
+#'   read_excel(path, range = "A:A", as = "arrow_array")
 #'   read_excel(path, as = "data.frame")
 #'   read_excel(path, range = "A:A", as = "vector")
 #' }
@@ -58,7 +65,7 @@ read_excel <- function(path,
                        dtypes = NULL,
                        skip_whitespace_tail_rows = FALSE,
                        whitespace_as_null = FALSE,
-                       as = c("arrow", "tibble", "data.frame", "vector"),
+                       as = c("arrow_table", "arrow_record_batch", "arrow_array", "tibble", "data.frame", "vector"),
                        columns = NULL) {
   as <- match.arg(as)
   dtype_coercion <- match.arg(dtype_coercion)
@@ -78,33 +85,33 @@ read_excel <- function(path,
   skip_whitespace_tail_rows <- validate_flag(skip_whitespace_tail_rows, "skip_whitespace_tail_rows")
   whitespace_as_null <- validate_flag(whitespace_as_null, "whitespace_as_null")
 
-  columns <- .read_excel_columns(
-    path,
-    zip_limits(),
-    sheet,
-    range,
-    columns,
-    col_names,
-    header_row,
-    skip_rows,
-    n_max,
-    schema_sample_rows,
-    dtype_coercion,
-    dtypes,
-    skip_whitespace_tail_rows,
-    whitespace_as_null
+  arrow <- read_excel_arrow_object(
+    path = path,
+    sheet = sheet,
+    range = range,
+    columns = columns,
+    col_names = col_names,
+    header_row = header_row,
+    skip_rows = skip_rows,
+    n_max = n_max,
+    schema_sample_rows = schema_sample_rows,
+    dtype_coercion = dtype_coercion,
+    dtypes = dtypes,
+    skip_whitespace_tail_rows = skip_whitespace_tail_rows,
+    whitespace_as_null = whitespace_as_null,
+    single_column = identical(as, "arrow_array")
   )
-  batch <- columns_to_record_batch(columns)
-
   switch(
     as,
-    arrow = batch,
+    arrow_table = arrow::arrow_table(arrow),
+    arrow_record_batch = arrow,
+    arrow_array = arrow,
     tibble = {
       require_namespace("tibble")
-      tibble::as_tibble(as.data.frame(batch))
+      tibble::as_tibble(as.data.frame(arrow))
     },
-    data.frame = as.data.frame(batch),
-    vector = record_batch_to_vectors(batch)
+    data.frame = as.data.frame(arrow),
+    vector = arrow_tabular_to_vectors(arrow)
   )
 }
 
@@ -151,13 +158,51 @@ excel_defined_names <- function(path) {
   )
 }
 
-columns_to_record_batch <- function(columns) {
+read_excel_arrow_object <- function(path,
+                                    sheet,
+                                    range,
+                                    columns,
+                                    col_names,
+                                    header_row,
+                                    skip_rows,
+                                    n_max,
+                                    schema_sample_rows,
+                                    dtype_coercion,
+                                    dtypes,
+                                    skip_whitespace_tail_rows,
+                                    whitespace_as_null,
+                                    single_column) {
   require_namespace("arrow")
-  do.call(arrow::record_batch, columns)
+  array <- getFromNamespace("allocate_arrow_array", "arrow")()
+  schema <- getFromNamespace("allocate_arrow_schema", "arrow")()
+  .read_excel_arrow(
+    path,
+    zip_limits(),
+    sheet,
+    range,
+    columns,
+    col_names,
+    header_row,
+    skip_rows,
+    n_max,
+    schema_sample_rows,
+    dtype_coercion,
+    dtypes,
+    skip_whitespace_tail_rows,
+    whitespace_as_null,
+    array,
+    schema,
+    single_column
+  )
+  if (single_column) {
+    arrow::Array$import_from_c(array, schema)
+  } else {
+    arrow::RecordBatch$import_from_c(array, schema)
+  }
 }
 
-record_batch_to_vectors <- function(batch) {
-  out <- as.data.frame(batch)
+arrow_tabular_to_vectors <- function(x) {
+  out <- as.data.frame(x)
   vectors <- unclass(out)
   if (length(vectors) == 1L) {
     vectors[[1L]]

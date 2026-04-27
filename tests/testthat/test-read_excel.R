@@ -14,14 +14,40 @@ expected_names <- c(
   "density_ratio_to_KC"
 )
 
-test_that("read_excel returns an Arrow RecordBatch by default", {
+test_that("read_excel returns an Arrow Table by default", {
   skip_if_not_installed("arrow")
-  batch <- read_excel(fixture())
+  table <- read_excel(fixture())
 
+  expect_s3_class(table, "Table")
+  expect_equal(table$num_rows, 6L)
+  expect_equal(table$num_columns, 5L)
+  expect_equal(names(table), expected_names)
+})
+
+test_that("explicit Arrow output modes work", {
+  skip_if_not_installed("arrow")
+
+  table <- read_excel(fixture(), as = "arrow_table")
+  expect_s3_class(table, "Table")
+  expect_equal(table$num_rows, 6L)
+  expect_equal(table$num_columns, 5L)
+  expect_equal(names(table), expected_names)
+
+  batch <- read_excel(fixture(), as = "arrow_record_batch")
   expect_s3_class(batch, "RecordBatch")
   expect_equal(batch$num_rows, 6L)
   expect_equal(batch$num_columns, 5L)
   expect_equal(names(batch), expected_names)
+
+  array <- read_excel(fixture(), range = "A:A", as = "arrow_array")
+  expect_s3_class(array, "Array")
+  expect_equal(length(array), 6L)
+})
+
+test_that("arrow_array requires one selected column", {
+  skip_if_not_installed("arrow")
+
+  expect_error(read_excel(fixture(), as = "arrow_array"), "exactly one selected column")
 })
 
 test_that("read_excel output conversions work", {

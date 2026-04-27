@@ -4,6 +4,10 @@
   check_extendr_result(.Call(wrap__read_excel_columns, source, zip_limits, sheet, range, columns, col_names, header_row, skip_rows, n_max, schema_sample_rows, dtype_coercion, dtypes, skip_whitespace_tail_rows, whitespace_as_null))
 }
 
+.read_excel_arrow <- function(source, zip_limits, sheet, range, columns, col_names, header_row, skip_rows, n_max, schema_sample_rows, dtype_coercion, dtypes, skip_whitespace_tail_rows, whitespace_as_null, array, schema, single_column) {
+  check_extendr_result(.Call(wrap__read_excel_arrow, source, zip_limits, sheet, range, columns, col_names, header_row, skip_rows, n_max, schema_sample_rows, dtype_coercion, dtypes, skip_whitespace_tail_rows, whitespace_as_null, array, schema, single_column))
+}
+
 .excel_sheets <- function(source, zip_limits) {
   check_extendr_result(.Call(wrap__excel_sheets, source, zip_limits))
 }

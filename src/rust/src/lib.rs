@@ -1,13 +1,21 @@
+use arrow_array::ffi::{FFI_ArrowArray, FFI_ArrowSchema};
+use arrow_array::{
+    ArrayRef, BooleanArray, Date32Array, DurationMillisecondArray, Float64Array, Int64Array,
+    NullArray, StringArray, StructArray, TimestampNanosecondArray,
+};
+use arrow_schema::{DataType, Field, TimeUnit};
 use chrono::{NaiveDate, NaiveDateTime, Timelike};
 use extendr_api::prelude::*;
+use extendr_api::R_ExternalPtrAddr;
 use fastexcel_rs::{
-    read_excel, DType, DTypeCoercion, DTypes, ExcelReader, FastExcelSeries, IdxOrName,
-    LoadSheetOrTableOptions, SelectedColumns, SkipRows,
+    read_excel, DType, DTypeCoercion, DTypes, ExcelReader, FastExcelColumn, FastExcelSeries,
+    IdxOrName, LoadSheetOrTableOptions, SelectedColumns, SkipRows,
 };
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Cursor, Read, Seek};
 use std::str::FromStr;
+use std::sync::Arc;
 use zip::result::ZipError;
 use zip::ZipArchive;
 
@@ -40,6 +48,115 @@ fn read_excel_columns(
     skip_whitespace_tail_rows: bool,
     whitespace_as_null: bool,
 ) -> Result<List> {
+    let columns = load_columns(
+        source,
+        zip_limits,
+        sheet,
+        range,
+        columns,
+        col_names,
+        header_row,
+        skip_rows,
+        n_max,
+        schema_sample_rows,
+        dtype_coercion,
+        dtypes,
+        skip_whitespace_tail_rows,
+        whitespace_as_null,
+    )?;
+
+    let mut pairs: Vec<(&str, Robj)> = Vec::with_capacity(columns.len());
+    let mut names: Vec<String> = Vec::with_capacity(columns.len());
+    let mut values: Vec<Robj> = Vec::with_capacity(columns.len());
+
+    for column in columns {
+        names.push(column.name().to_string());
+        values.push(series_to_robj(column.data(), column.len())?);
+    }
+
+    for (name, value) in names.iter().zip(values.into_iter()) {
+        pairs.push((name.as_str(), value));
+    }
+
+    Ok(List::from_pairs(pairs))
+}
+
+#[extendr]
+#[allow(clippy::too_many_arguments)]
+fn read_excel_arrow(
+    source: Robj,
+    zip_limits: Robj,
+    sheet: Robj,
+    range: Robj,
+    columns: Robj,
+    col_names: Robj,
+    header_row: Robj,
+    skip_rows: Robj,
+    n_max: Robj,
+    schema_sample_rows: Robj,
+    dtype_coercion: Robj,
+    dtypes: Robj,
+    skip_whitespace_tail_rows: bool,
+    whitespace_as_null: bool,
+    array: Robj,
+    schema: Robj,
+    single_column: bool,
+) -> Result<()> {
+    let columns = load_columns(
+        source,
+        zip_limits,
+        sheet,
+        range,
+        columns,
+        col_names,
+        header_row,
+        skip_rows,
+        n_max,
+        schema_sample_rows,
+        dtype_coercion,
+        dtypes,
+        skip_whitespace_tail_rows,
+        whitespace_as_null,
+    )?;
+
+    if single_column {
+        if columns.len() != 1 {
+            return Err(Error::Other(
+                "`as = \"arrow_array\"` requires exactly one selected column.".to_string(),
+            ));
+        }
+        let (_field, values) = column_to_arrow(columns.into_iter().next().unwrap())?;
+        export_array(values, array, schema)?;
+    } else {
+        let mut arrays = Vec::with_capacity(columns.len());
+        for column in columns {
+            let (field, values) = column_to_arrow(column)?;
+            arrays.push((field, values));
+        }
+        let struct_array: ArrayRef = Arc::new(StructArray::from(arrays));
+        export_array(struct_array, array, schema)?;
+    }
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn load_columns(
+    source: Robj,
+    zip_limits: Robj,
+    sheet: Robj,
+    range: Robj,
+    columns: Robj,
+    col_names: Robj,
+    header_row: Robj,
+    skip_rows: Robj,
+    n_max: Robj,
+    schema_sample_rows: Robj,
+    dtype_coercion: Robj,
+    dtypes: Robj,
+    skip_whitespace_tail_rows: bool,
+    whitespace_as_null: bool,
+) -> Result<Vec<FastExcelColumn>> {
     let mut reader = reader_from_source(source, zip_limits)?;
     let mut opts = LoadSheetOrTableOptions::new_for_sheet();
 
@@ -89,22 +206,7 @@ fn read_excel_columns(
 
     let idx_or_name = sheet_to_idx_or_name(sheet)?;
     let sheet = reader.load_sheet(idx_or_name, opts).map_err(to_r_error)?;
-    let columns = sheet.to_columns().map_err(to_r_error)?;
-
-    let mut pairs: Vec<(&str, Robj)> = Vec::with_capacity(columns.len());
-    let mut names: Vec<String> = Vec::with_capacity(columns.len());
-    let mut values: Vec<Robj> = Vec::with_capacity(columns.len());
-
-    for column in columns {
-        names.push(column.name().to_string());
-        values.push(series_to_robj(column.data(), column.len())?);
-    }
-
-    for (name, value) in names.iter().zip(values.into_iter()) {
-        pairs.push((name.as_str(), value));
-    }
-
-    Ok(List::from_pairs(pairs))
+    sheet.to_columns().map_err(to_r_error)
 }
 
 fn optional_positive_integer(value: Robj) -> Result<Option<usize>> {
@@ -140,7 +242,8 @@ fn dtypes_from_robj(dtypes: &Robj) -> Result<Option<DTypes>> {
         )));
     }
 
-    let names = names.ok_or_else(|| Error::Other("named `dtypes` require column names".to_string()))?;
+    let names =
+        names.ok_or_else(|| Error::Other("named `dtypes` require column names".to_string()))?;
     let mut map = HashMap::with_capacity(values.len());
     for (name, dtype) in names.into_iter().zip(values.into_iter()) {
         map.insert(
@@ -206,10 +309,14 @@ fn reader_from_source(source: Robj, zip_limits: Robj) -> Result<ExcelReader> {
 }
 
 fn parse_zip_limits(zip_limits: Robj) -> Result<ZipLimits> {
-    let values = zip_limits.as_real_vector().ok_or_else(|| {
-        Error::Other("ZIP preflight limits must be a numeric vector".to_string())
-    })?;
-    if values.len() != 4 || values.iter().any(|value| !value.is_finite() || *value <= 0.0) {
+    let values = zip_limits
+        .as_real_vector()
+        .ok_or_else(|| Error::Other("ZIP preflight limits must be a numeric vector".to_string()))?;
+    if values.len() != 4
+        || values
+            .iter()
+            .any(|value| !value.is_finite() || *value <= 0.0)
+    {
         return Err(Error::Other(
             "ZIP preflight limits must contain four positive finite numbers".to_string(),
         ));
@@ -282,7 +389,8 @@ where
             )));
         }
 
-        if compressed_size > 0 && uncompressed_size / compressed_size > limits.max_compression_ratio {
+        if compressed_size > 0 && uncompressed_size / compressed_size > limits.max_compression_ratio
+        {
             return Err(Error::Other(format!(
                 "Workbook ZIP entry `{}` has a suspicious compression ratio greater than {}:1.",
                 file.name(),
@@ -340,7 +448,10 @@ fn selected_columns_from_robj(columns: &Robj) -> Result<Option<SelectedColumns>>
             return Ok(None);
         }
         return Ok(Some(SelectedColumns::Selection(
-            names.into_iter().map(|name| IdxOrName::Name(name.to_string())).collect(),
+            names
+                .into_iter()
+                .map(|name| IdxOrName::Name(name.to_string()))
+                .collect(),
         )));
     }
 
@@ -349,7 +460,10 @@ fn selected_columns_from_robj(columns: &Robj) -> Result<Option<SelectedColumns>>
             return Ok(None);
         }
         return Ok(Some(SelectedColumns::Selection(
-            indices.into_iter().map(|idx| IdxOrName::Idx((idx - 1) as usize)).collect(),
+            indices
+                .into_iter()
+                .map(|idx| IdxOrName::Idx((idx - 1) as usize))
+                .collect(),
         )));
     }
 
@@ -380,6 +494,83 @@ fn series_to_robj(series: &FastExcelSeries, len: usize) -> Result<Robj> {
         FastExcelSeries::Date(values) => date_vector(values)?,
         FastExcelSeries::Duration(values) => duration_vector(values),
     })
+}
+
+fn column_to_arrow(column: FastExcelColumn) -> Result<(Arc<Field>, ArrayRef)> {
+    let name = column.name().to_string();
+    let len = column.len();
+    let (data_type, values): (DataType, ArrayRef) = match column.data() {
+        FastExcelSeries::Null => (DataType::Null, Arc::new(NullArray::new(len))),
+        FastExcelSeries::Bool(values) => (
+            DataType::Boolean,
+            Arc::new(BooleanArray::from(values.to_vec())),
+        ),
+        FastExcelSeries::String(values) => {
+            (DataType::Utf8, Arc::new(StringArray::from(values.to_vec())))
+        }
+        FastExcelSeries::Int(values) => {
+            (DataType::Int64, Arc::new(Int64Array::from(values.to_vec())))
+        }
+        FastExcelSeries::Float(values) => (
+            DataType::Float64,
+            Arc::new(Float64Array::from(values.to_vec())),
+        ),
+        FastExcelSeries::Datetime(values) => {
+            let converted = values
+                .iter()
+                .map(|value| value.and_then(|value| value.and_utc().timestamp_nanos_opt()))
+                .collect::<Vec<_>>();
+            (
+                DataType::Timestamp(TimeUnit::Nanosecond, Some("UTC".into())),
+                Arc::new(TimestampNanosecondArray::from(converted)),
+            )
+        }
+        FastExcelSeries::Date(values) => {
+            let epoch = NaiveDate::from_ymd_opt(1970, 1, 1)
+                .ok_or_else(|| Error::Other("failed to construct Unix epoch date".to_string()))?;
+            let converted = values
+                .iter()
+                .map(|value| value.map(|value| (value - epoch).num_days() as i32))
+                .collect::<Vec<_>>();
+            (DataType::Date32, Arc::new(Date32Array::from(converted)))
+        }
+        FastExcelSeries::Duration(values) => {
+            let converted = values
+                .iter()
+                .map(|value| value.map(|value| value.num_milliseconds()))
+                .collect::<Vec<_>>();
+            (
+                DataType::Duration(TimeUnit::Millisecond),
+                Arc::new(DurationMillisecondArray::from(converted)),
+            )
+        }
+    };
+
+    Ok((Arc::new(Field::new(name, data_type, true)), values))
+}
+
+fn export_array(values: ArrayRef, array: Robj, schema: Robj) -> Result<()> {
+    let array_ptr = external_pointer_addr::<FFI_ArrowArray>(&array)?;
+    let schema_ptr = external_pointer_addr::<FFI_ArrowSchema>(&schema)?;
+    unsafe {
+        let data = values.to_data();
+        let ffi_array = FFI_ArrowArray::new(&data);
+        let ffi_schema = FFI_ArrowSchema::try_from(data.data_type()).map_err(to_r_error)?;
+        std::ptr::write_unaligned(array_ptr, ffi_array);
+        std::ptr::write_unaligned(schema_ptr, ffi_schema);
+    }
+    Ok(())
+}
+
+fn external_pointer_addr<T>(ptr: &Robj) -> Result<*mut T> {
+    if !ptr.is_external_pointer() {
+        return Err(Error::Other("expected an external pointer".to_string()));
+    }
+    let addr = unsafe { R_ExternalPtrAddr(ptr.get()).cast::<T>() };
+    if addr.is_null() {
+        return Err(Error::Other("external pointer is NULL".to_string()));
+    }
+    Ok(addr)
 }
 
 fn null_logical_vector(len: usize) -> Robj {
@@ -487,6 +678,7 @@ fn to_r_error<E: std::fmt::Display>(err: E) -> Error {
 extendr_module! {
     mod fastexcel;
     fn read_excel_columns;
+    fn read_excel_arrow;
     fn excel_sheets;
     fn excel_tables;
     fn excel_defined_names;

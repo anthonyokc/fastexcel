@@ -47,7 +47,7 @@ cat("Benchmarking ", workbook, "\n", sep = "")
 cat("Iterations: ", iterations, "\n", sep = "")
 
 bench_expressions <- alist(
-  fastexcel_arrow = fastexcel::read_excel(workbook, as = "arrow"),
+  fastexcel_arrow_table = fastexcel::read_excel(workbook, as = "arrow_table"),
   fastexcel_data_frame = fastexcel::read_excel(workbook, as = "data.frame"),
   readxl_tibble = readxl::read_excel(workbook),
   openxlsx2_data_frame = openxlsx2::read_xlsx(workbook)
