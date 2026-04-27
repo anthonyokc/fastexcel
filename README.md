@@ -1,4 +1,4 @@
-# fastexcel <a href="https://anthonyokc.github.io/fastexcel/"><img src="man/figures/logo_fastexcel.png" align="right" height="138" /></a>
+# fastexcel <a href="https://anthonyokc.github.io/fastexcel/"><img src="man/figures/logo.png" align="right" height="138" /></a>
 
 `fastexcel` is an R package for reading Excel workbooks with a Rust backend. It
 uses [ToucanToco's Rust `fastexcel` crate](https://github.com/ToucanToco/fastexcel) and returns results in R.
