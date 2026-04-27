@@ -321,6 +321,22 @@ test_that("ZIP preflight options must be positive numbers", {
   expect_error(excel_sheets(fixture()), "fastexcel.max_zip_total_size")
 })
 
+test_that("errors include typed fastexcel condition classes", {
+  validation_error <- tryCatch(read_excel(fixture(), columns = 0), error = identity)
+  expect_true(inherits(validation_error, "fastexcel_validation_error"))
+  expect_true(inherits(validation_error, "fastexcel_error"))
+
+  old <- options(fastexcel.max_workbook_size = 1)
+  on.exit(options(old), add = TRUE)
+  resource_error <- tryCatch(excel_sheets(fixture()), error = identity)
+  expect_true(inherits(resource_error, "fastexcel_resource_limit_error"))
+  expect_true(inherits(resource_error, "fastexcel_error"))
+
+  parse_error <- tryCatch(excel_sheets("does-not-exist.xlsx"), error = identity)
+  expect_true(inherits(parse_error, "fastexcel_parse_error"))
+  expect_true(inherits(parse_error, "fastexcel_error"))
+})
+
 test_that("supporting workbook metadata functions work", {
   expect_equal(excel_sheets(fixture()), "Sheet1")
   info <- excel_sheet_info(fixture())

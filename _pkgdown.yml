@@ -27,9 +27,13 @@ reference:
   - title: Read Excel files
     contents:
       - read_excel
+      - read_excel_table
   - title: Workbook metadata
     contents:
       - excel_sheets
       - excel_sheet_info
+      - excel_sheet_columns
       - excel_tables
+      - excel_table_info
+      - excel_table_columns
       - excel_defined_names

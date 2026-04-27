@@ -28,6 +28,9 @@ read_excel(path, sheet = 1, range = NULL, col_names = TRUE,
 }
 \value{For \code{as = "arrow_table"}, an \code{arrow::Table}. For \code{as = "arrow_record_batch"}, an \code{arrow::RecordBatch}. For \code{as = "arrow_array"}, an \code{arrow::Array}, valid only when exactly one column is selected. For \code{as = "tibble"}, a tibble. For \code{as = "data.frame"}, a base data frame. For \code{as = "vector"}, a named list of base R vectors for multi-column output, or a bare base R vector when exactly one column is selected. \code{as = "arrow_array"} differs from \code{as = "vector"}: it returns an Arrow array, not an R vector.}
 \description{Reads a worksheet from an Excel workbook and returns an Arrow \code{Table} by default.}
+\section{Error classes}{
+All package errors inherit from \code{fastexcel_error}. More specific subclasses are used where possible: \code{fastexcel_validation_error}, \code{fastexcel_resource_limit_error}, \code{fastexcel_parse_error}, and \code{fastexcel_dependency_error}.
+}
 \examples{
 path <- system.file("extdata/Pop_Density.xlsx", package = "fastexcel")
 if (nzchar(path)) {

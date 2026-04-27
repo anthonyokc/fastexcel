@@ -43,6 +43,13 @@
 #'   multi-column output, or a bare base R vector when exactly one column is
 #'   selected. `as = "arrow_array"` differs from `as = "vector"`: it returns an
 #'   Arrow array, not an R vector.
+#'
+#' @section Error classes:
+#' All package errors inherit from `fastexcel_error`. More specific subclasses
+#' are used where possible: `fastexcel_validation_error`,
+#' `fastexcel_resource_limit_error`, `fastexcel_parse_error`, and
+#' `fastexcel_dependency_error`.
+#'
 #' @examples
 #' path <- system.file("extdata/Pop_Density.xlsx", package = "fastexcel")
 #' if (nzchar(path)) {
@@ -74,7 +81,7 @@ read_excel <- function(path,
   range <- validate_range(range)
   columns <- validate_columns(columns)
   if (!is.na(range) && !is.na(columns[[1L]])) {
-    stop("`range` and `columns` cannot be used together.", call. = FALSE)
+    stop_fastexcel("`range` and `columns` cannot be used together.", class = "fastexcel_validation_error")
   }
   col_names <- validate_col_names(col_names)
   header_row <- validate_optional_row_count(header_row, "header_row", zero_allowed = FALSE)
@@ -248,7 +255,7 @@ excel_sheet_columns <- function(path,
   range <- validate_range(range)
   columns <- validate_columns(columns)
   if (!is.na(range) && !is.na(columns[[1L]])) {
-    stop("`range` and `columns` cannot be used together.", call. = FALSE)
+    stop_fastexcel("`range` and `columns` cannot be used together.", class = "fastexcel_validation_error")
   }
   col_names <- validate_col_names(col_names)
   header_row <- validate_optional_row_count(header_row, "header_row", zero_allowed = FALSE)
@@ -296,7 +303,7 @@ excel_tables <- function(path, sheet = NULL) {
   if (is.null(sheet)) {
     sheet <- NA_character_
   } else if (!is.character(sheet) || length(sheet) != 1L || is.na(sheet)) {
-    stop("`sheet` must be NULL or a single sheet name.", call. = FALSE)
+    stop_fastexcel("`sheet` must be NULL or a single sheet name.", class = "fastexcel_validation_error")
   }
   .excel_tables(path, zip_limits(), sheet)
 }
@@ -515,7 +522,7 @@ validate_source <- function(path) {
     return(path)
   }
   if (!is.character(path) || length(path) != 1L || is.na(path) || !nzchar(path)) {
-    stop("`path` must be a single non-empty string or a non-empty raw vector.", call. = FALSE)
+    stop_fastexcel("`path` must be a single non-empty string or a non-empty raw vector.", class = "fastexcel_validation_error")
   }
   info <- file.info(path)
   if (!is.na(info$size)) {
@@ -527,18 +534,18 @@ validate_source <- function(path) {
 max_workbook_size <- function() {
   max_size <- getOption("fastexcel.max_workbook_size", 100 * 1024^2)
   if (!is.numeric(max_size) || length(max_size) != 1L || is.na(max_size) || max_size <= 0) {
-    stop("Option `fastexcel.max_workbook_size` must be a positive number of bytes.", call. = FALSE)
+    stop_fastexcel("Option `fastexcel.max_workbook_size` must be a positive number of bytes.", class = "fastexcel_validation_error")
   }
   max_size
 }
 
 check_workbook_size <- function(size, max_size) {
   if (size > max_size) {
-    stop(
+    stop_fastexcel(
       "Workbook is larger than the configured `fastexcel.max_workbook_size` limit of ",
       format(max_size, big.mark = ",", scientific = FALSE),
       " bytes.",
-      call. = FALSE
+      class = "fastexcel_resource_limit_error"
     )
   }
 }
@@ -555,7 +562,7 @@ zip_limits <- function() {
 positive_number_option <- function(name, default) {
   value <- getOption(name, default)
   if (!is.numeric(value) || length(value) != 1L || is.na(value) || value < 1 || value != floor(value)) {
-    stop("Option `", name, "` must be a positive whole number.", call. = FALSE)
+    stop_fastexcel("Option `", name, "` must be a positive whole number.", class = "fastexcel_validation_error")
   }
   value
 }
@@ -567,7 +574,7 @@ validate_sheet <- function(sheet) {
   if (is.numeric(sheet) && length(sheet) == 1L && is.finite(sheet) && sheet == as.integer(sheet) && sheet >= 1L) {
     return(as.integer(sheet))
   }
-  stop("`sheet` must be a single positive integer or non-empty string.", call. = FALSE)
+  stop_fastexcel("`sheet` must be a single positive integer or non-empty string.", class = "fastexcel_validation_error")
 }
 
 validate_range <- function(range) {
@@ -575,7 +582,7 @@ validate_range <- function(range) {
     return(NA_character_)
   }
   if (!is.character(range) || length(range) != 1L || is.na(range) || !nzchar(range)) {
-    stop("`range` must be NULL or a single non-empty string.", call. = FALSE)
+    stop_fastexcel("`range` must be NULL or a single non-empty string.", class = "fastexcel_validation_error")
   }
   range
 }
@@ -590,14 +597,14 @@ validate_columns <- function(columns) {
   if (is.numeric(columns) && length(columns) > 0L && all(is.finite(columns)) && all(columns == floor(columns)) && all(columns >= 1)) {
     return(as.integer(columns))
   }
-  stop("`columns` must be NULL, a non-empty character vector, or a non-empty numeric vector of positive integer positions.", call. = FALSE)
+  stop_fastexcel("`columns` must be NULL, a non-empty character vector, or a non-empty numeric vector of positive integer positions.", class = "fastexcel_validation_error")
 }
 
 validate_table_name <- function(table, name) {
   if (is.character(table) && length(table) == 1L && !is.na(table) && nzchar(table)) {
     return(table)
   }
-  stop("`", name, "` must be a single non-empty string.", call. = FALSE)
+  stop_fastexcel("`", name, "` must be a single non-empty string.", class = "fastexcel_validation_error")
 }
 
 validate_col_names <- function(col_names) {
@@ -607,12 +614,12 @@ validate_col_names <- function(col_names) {
   if (is.character(col_names) && !anyNA(col_names)) {
     return(col_names)
   }
-  stop("`col_names` must be TRUE, FALSE, or a character vector.", call. = FALSE)
+  stop_fastexcel("`col_names` must be TRUE, FALSE, or a character vector.", class = "fastexcel_validation_error")
 }
 
 validate_n_max <- function(n_max) {
   if (!is.numeric(n_max) || length(n_max) != 1L || is.na(n_max) || n_max < 0) {
-    stop("`n_max` must be a single non-negative number or Inf.", call. = FALSE)
+    stop_fastexcel("`n_max` must be a single non-negative number or Inf.", class = "fastexcel_validation_error")
   }
   if (is.infinite(n_max)) {
     return(NA_integer_)
@@ -625,11 +632,11 @@ validate_optional_row_count <- function(value, name, zero_allowed) {
     return(NA_integer_)
   }
   if (!is.numeric(value) || length(value) != 1L || is.na(value) || !is.finite(value)) {
-    stop("`", name, "` must be NULL or a single ", if (zero_allowed) "non-negative" else "positive", " integer.", call. = FALSE)
+    stop_fastexcel("`", name, "` must be NULL or a single ", if (zero_allowed) "non-negative" else "positive", " integer.", class = "fastexcel_validation_error")
   }
   int_value <- as.integer(value)
   if (value != int_value || int_value < as.integer(!zero_allowed)) {
-    stop("`", name, "` must be NULL or a single ", if (zero_allowed) "non-negative" else "positive", " integer.", call. = FALSE)
+    stop_fastexcel("`", name, "` must be NULL or a single ", if (zero_allowed) "non-negative" else "positive", " integer.", class = "fastexcel_validation_error")
   }
   int_value
 }
@@ -640,31 +647,51 @@ validate_dtypes <- function(dtypes) {
   }
   valid <- c("null", "int", "float", "string", "boolean", "datetime", "date", "duration")
   if (!is.character(dtypes) || length(dtypes) < 1L || anyNA(dtypes) || any(!nzchar(dtypes))) {
-    stop("`dtypes` must be NULL, a dtype string, or a named character vector of dtype strings.", call. = FALSE)
+    stop_fastexcel("`dtypes` must be NULL, a dtype string, or a named character vector of dtype strings.", class = "fastexcel_validation_error")
   }
   bad <- setdiff(dtypes, valid)
   if (length(bad) > 0L) {
-    stop("Unsupported dtype: ", bad[[1L]], ".", call. = FALSE)
+    stop_fastexcel("Unsupported dtype: ", bad[[1L]], ".", class = "fastexcel_validation_error")
   }
   dtype_names <- names(dtypes)
   if (length(dtypes) == 1L && is.null(dtype_names)) {
     return(unname(dtypes))
   }
   if (is.null(dtype_names) || anyNA(dtype_names) || any(!nzchar(dtype_names))) {
-    stop("Named `dtypes` must have one non-empty column name per dtype.", call. = FALSE)
+    stop_fastexcel("Named `dtypes` must have one non-empty column name per dtype.", class = "fastexcel_validation_error")
   }
   dtypes
 }
 
 validate_flag <- function(value, name) {
   if (!is.logical(value) || length(value) != 1L || is.na(value)) {
-    stop("`", name, "` must be TRUE or FALSE.", call. = FALSE)
+    stop_fastexcel("`", name, "` must be TRUE or FALSE.", class = "fastexcel_validation_error")
   }
   value
 }
 
 require_namespace <- function(package) {
   if (!requireNamespace(package, quietly = TRUE)) {
-    stop("Package `", package, "` is required for this output mode.", call. = FALSE)
+    stop_fastexcel("Package `", package, "` is required for this output mode.", class = "fastexcel_dependency_error")
   }
+}
+
+stop_fastexcel <- function(..., class) {
+  message <- paste0(...)
+  stop(
+    structure(
+      list(message = message, call = NULL),
+      class = c(class, "fastexcel_error", "error", "condition")
+    )
+  )
+}
+
+classify_extendr_error <- function(message) {
+  if (grepl("ZIP contains|ZIP entry|compression ratio|ZIP preflight", message)) {
+    return("fastexcel_resource_limit_error")
+  }
+  if (grepl("invalid|must be|require|Unsupported dtype|range|column|selection", message, ignore.case = TRUE)) {
+    return("fastexcel_validation_error")
+  }
+  "fastexcel_parse_error"
 }

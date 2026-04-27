@@ -18,6 +18,8 @@ uses [ToucanToco's Rust `fastexcel` crate](https://github.com/ToucanToco/fastexc
 - Read named Excel tables and inspect table dimensions.
 - Inspect sheet and table column metadata, including inferred or specified
   dtypes.
+- Catch validation, parsing, dependency, and resource-limit failures with typed
+  `fastexcel_error` condition classes.
 
 ## Requirements
 
@@ -237,6 +239,13 @@ read_excel(
   selected columns, or all available columns with `available = TRUE`.
 - `excel_defined_names(path)`: returns defined-name metadata as a data frame.
 
+### Error Classes
+
+All package errors inherit from `fastexcel_error`. More specific subclasses are
+used where possible: `fastexcel_validation_error`,
+`fastexcel_resource_limit_error`, `fastexcel_parse_error`, and
+`fastexcel_dependency_error`.
+
 ## Roadmap
 
 Legend: ✅ implemented, ◐ partially implemented, ❌ not implemented.
@@ -284,7 +293,7 @@ Legend: ✅ implemented, ◐ partially implemented, ❌ not implemented.
 | `ExcelTable` object/metadata | `excel_table_info(path)` exposes table metadata; lazy table objects are not exposed | ◐ |
 | Table-to-Arrow/dataframe conversion | `read_excel_table(..., as = "arrow_table")`, `"data.frame"`, `"tibble"`, or `"vector"` | ✅ |
 | `ColumnInfo` metadata | `excel_sheet_columns()` and `excel_table_columns()` expose name, index, dtype, and provenance | ✅ |
-| Typed exception classes | R receives string errors only | ◐ |
+| Typed exception classes | R errors inherit from `fastexcel_error` with validation, resource-limit, parse, and dependency subclasses | ✅ |
 
 ## Development
 
