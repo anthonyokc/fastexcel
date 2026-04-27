@@ -9,7 +9,7 @@ use extendr_api::prelude::*;
 use extendr_api::R_ExternalPtrAddr;
 use fastexcel_rs::{
     read_excel, DType, DTypeCoercion, DTypes, ExcelReader, FastExcelColumn, FastExcelSeries,
-    IdxOrName, LoadSheetOrTableOptions, SelectedColumns, SkipRows,
+    IdxOrName, LoadSheetOrTableOptions, SelectedColumns, SheetVisible, SkipRows,
 };
 use std::collections::HashMap;
 use std::fs::File;
@@ -261,6 +261,37 @@ fn excel_sheets(source: Robj, zip_limits: Robj) -> Result<Vec<String>> {
 }
 
 #[extendr]
+fn excel_sheet_info(source: Robj, zip_limits: Robj, sheet: Robj) -> Result<List> {
+    let mut reader = reader_from_source(source, zip_limits)?;
+    let sheet_refs = sheet_refs(&reader, sheet)?;
+
+    let mut names = Vec::with_capacity(sheet_refs.len());
+    let mut widths = Vec::with_capacity(sheet_refs.len());
+    let mut heights = Vec::with_capacity(sheet_refs.len());
+    let mut total_heights = Vec::with_capacity(sheet_refs.len());
+    let mut visibilities = Vec::with_capacity(sheet_refs.len());
+
+    for sheet_ref in sheet_refs {
+        let mut sheet = reader
+            .load_sheet(sheet_ref, LoadSheetOrTableOptions::new_for_sheet())
+            .map_err(to_r_error)?;
+        names.push(sheet.name().to_string());
+        widths.push(sheet.width() as i32);
+        heights.push(sheet.height() as i32);
+        total_heights.push(sheet.total_height() as i32);
+        visibilities.push(sheet_visibility_to_str(sheet.visible()).to_string());
+    }
+
+    Ok(list!(
+        name = names,
+        width = widths,
+        height = heights,
+        total_height = total_heights,
+        visibility = visibilities
+    ))
+}
+
+#[extendr]
 fn excel_tables(source: Robj, zip_limits: Robj, sheet: Robj) -> Result<Vec<String>> {
     let mut reader = reader_from_source(source, zip_limits)?;
     let sheet_name = sheet.as_str().filter(|s| !s.is_empty() && *s != "NA");
@@ -270,6 +301,26 @@ fn excel_tables(source: Robj, zip_limits: Robj, sheet: Robj) -> Result<Vec<Strin
         .into_iter()
         .map(String::from)
         .collect())
+}
+
+fn sheet_refs(reader: &ExcelReader, sheet: Robj) -> Result<Vec<IdxOrName>> {
+    if sheet.is_null() {
+        return Ok(reader
+            .sheet_names()
+            .into_iter()
+            .map(|name| IdxOrName::Name(name.to_string()))
+            .collect());
+    }
+
+    Ok(vec![sheet_to_idx_or_name(sheet)?])
+}
+
+fn sheet_visibility_to_str(visibility: SheetVisible) -> &'static str {
+    match visibility {
+        SheetVisible::Visible => "visible",
+        SheetVisible::Hidden => "hidden",
+        SheetVisible::VeryHidden => "very_hidden",
+    }
 }
 
 #[extendr]
@@ -680,6 +731,7 @@ extendr_module! {
     fn read_excel_columns;
     fn read_excel_arrow;
     fn excel_sheets;
+    fn excel_sheet_info;
     fn excel_tables;
     fn excel_defined_names;
 }

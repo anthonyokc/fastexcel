@@ -12,6 +12,10 @@
   check_extendr_result(.Call(wrap__excel_sheets, source, zip_limits))
 }
 
+.excel_sheet_info <- function(source, zip_limits, sheet) {
+  check_extendr_result(.Call(wrap__excel_sheet_info, source, zip_limits, sheet))
+}
+
 .excel_tables <- function(source, zip_limits, sheet) {
   check_extendr_result(.Call(wrap__excel_tables, source, zip_limits, sheet))
 }

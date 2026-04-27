@@ -125,6 +125,31 @@ excel_sheets <- function(path) {
   .excel_sheets(validate_source(path), zip_limits())
 }
 
+#' Inspect sheet metadata in an Excel workbook
+#'
+#' @param path Path to an Excel workbook, or a raw vector containing workbook
+#'   bytes.
+#' @param sheet Optional worksheet to inspect, either as a 1-based sheet index or
+#'   a sheet name. When `NULL`, metadata is returned for every sheet.
+#' @return A tibble with one row per sheet and columns `name`, `width`,
+#'   `height`, `total_height`, and `visibility`.
+#' @export
+excel_sheet_info <- function(path, sheet = NULL) {
+  require_namespace("tibble")
+  path <- validate_source(path)
+  if (!is.null(sheet)) {
+    sheet <- validate_sheet(sheet)
+  }
+  out <- .excel_sheet_info(path, zip_limits(), sheet)
+  tibble::tibble(
+    name = out$name,
+    width = out$width,
+    height = out$height,
+    total_height = out$total_height,
+    visibility = out$visibility
+  )
+}
+
 #' List table names in an Excel workbook
 #'
 #' @param path Path to an Excel workbook, or a raw vector containing workbook

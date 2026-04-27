@@ -5,6 +5,7 @@
 ^\.Rbuildignore$
 ^_pkgdown\.yml$
 ^docs$
+^pkgdown$
 ^\.Rcheck$
 ^\.\.Rcheck$
 \.Rcheck$

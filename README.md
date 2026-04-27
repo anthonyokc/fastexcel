@@ -13,7 +13,8 @@ uses [ToucanToco's Rust `fastexcel` crate](https://github.com/ToucanToco/fastexc
   or position.
 - Control header rows, skipped rows, schema sampling, dtype coercion, and
   whitespace handling.
-- Inspect workbook metadata with sheet, table, and defined-name helpers.
+- Inspect workbook metadata with sheet names, sheet dimensions, table, and
+  defined-name helpers.
 
 ## Requirements
 
@@ -94,6 +95,7 @@ Inspect workbook metadata:
 
 ```r
 excel_sheets(path)
+excel_sheet_info(path)
 excel_tables(path)
 excel_defined_names(path)
 ```
@@ -210,6 +212,9 @@ read_excel(
 ### Metadata Helpers
 
 - `excel_sheets(path)`: returns sheet names.
+- `excel_sheet_info(path, sheet = NULL)`: returns a tibble of sheet names,
+  dimensions, and visibility metadata, optionally filtered by sheet index or
+  name.
 - `excel_tables(path, sheet = NULL)`: returns table names, optionally filtered by
   sheet name.
 - `excel_defined_names(path)`: returns defined-name metadata as a data frame.
@@ -253,7 +258,7 @@ Legend: ✅ implemented, ◐ partially implemented, ❌ not implemented.
 | `whitespace_as_null` | `whitespace_as_null` | ✅ |
 | Lazy `ExcelReader` object | R API opens internally per call | ❌ |
 | Lazy `ExcelSheet` object | Not exposed | ❌ |
-| `ExcelSheet` metadata: name, width, height, total height, visibility | Not exposed | ❌ |
+| `ExcelSheet` metadata: name, width, height, total height, visibility | `excel_sheet_info(path)` or `excel_sheet_info(raw_bytes)` | ✅ |
 | Sheet `selected_columns`, `available_columns`, `specified_dtypes` | Not exposed | ❌ |
 | `to_arrow_with_errors` / cell parse error reporting | Not exposed | ❌ |
 | `load_table` | Not exposed | ❌ |

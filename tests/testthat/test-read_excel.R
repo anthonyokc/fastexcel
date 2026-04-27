@@ -144,6 +144,7 @@ test_that("metadata helpers accept workbook bytes", {
   bytes <- readBin(fixture(), what = "raw", n = file.info(fixture())$size)
 
   expect_equal(excel_sheets(bytes), "Sheet1")
+  expect_s3_class(excel_sheet_info(bytes), "tbl_df")
   expect_type(excel_tables(bytes), "character")
   expect_s3_class(excel_defined_names(bytes), "data.frame")
 })
@@ -172,6 +173,16 @@ test_that("ZIP preflight options must be positive numbers", {
 
 test_that("supporting workbook metadata functions work", {
   expect_equal(excel_sheets(fixture()), "Sheet1")
+  info <- excel_sheet_info(fixture())
+  expect_s3_class(info, "tbl_df")
+  expect_equal(names(info), c("name", "width", "height", "total_height", "visibility"))
+  expect_equal(info$name, "Sheet1")
+  expect_equal(info$width, 5L)
+  expect_equal(info$height, 6L)
+  expect_equal(info$total_height, 6L)
+  expect_equal(info$visibility, "visible")
+  expect_equal(excel_sheet_info(fixture(), sheet = 1), info)
+  expect_equal(excel_sheet_info(fixture(), sheet = "Sheet1"), info)
   expect_type(excel_tables(fixture()), "character")
   expect_s3_class(excel_defined_names(fixture()), "data.frame")
 })
