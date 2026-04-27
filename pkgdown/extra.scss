@@ -1,0 +1,394 @@
+:root {
+  --fx-ink: #185c37;
+  --fx-paper: #f8f1e4;
+  --fx-paper-2: #eee2cf;
+  --fx-rule: #cfc2af;
+  --fx-grid: rgba(24, 92, 55, 0.10);
+  --fx-grid-soft: rgba(24, 92, 55, 0.05);
+  --fx-green: #185c37;
+  --fx-lime: #9fd89f;
+  --fx-rust: #bb4d22;
+}
+
+html {
+  background-color: var(--fx-paper);
+}
+
+body {
+  background-color: var(--fx-paper);
+  background-image:
+    linear-gradient(90deg, var(--fx-grid) 1px, transparent 1px),
+    linear-gradient(180deg, var(--fx-grid-soft) 1px, transparent 1px);
+  background-size: 64px 100%, 100% 32px;
+  background-attachment: fixed;
+  background-repeat: repeat;
+  position: relative;
+}
+
+body::before {
+  background:
+    radial-gradient(60rem 36rem at 88% -8%, rgba(99, 214, 143, 0.22), transparent 70%),
+    radial-gradient(40rem 28rem at -8% 18%, rgba(187, 77, 34, 0.10), transparent 70%);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: -1;
+}
+
+// ── Navbar ───────────────────────────────────────────────────────────────────
+
+.navbar {
+  background-color: var(--fx-ink) !important;
+  border-bottom: 1px solid rgba(99, 214, 143, 0.45);
+  letter-spacing: 0.02em;
+}
+
+.navbar .container {
+  position: relative;
+}
+
+.navbar .container::before {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--fx-lime) 0 10px,
+    transparent 10px 16px,
+    var(--fx-rust) 16px 18px,
+    transparent 18px 30px
+  );
+  bottom: -2px;
+  content: "";
+  height: 3px;
+  left: 12px;
+  position: absolute;
+  width: unquote("min(19rem, 42vw)");
+}
+
+.navbar-brand,
+.navbar a.navbar-brand {
+  color: var(--fx-paper) !important;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 1.08rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  text-transform: lowercase;
+}
+
+.navbar-brand::before {
+  color: var(--fx-lime);
+  content: "//";
+  margin-right: 0.45rem;
+}
+
+.navbar .nav-link,
+.navbar .navbar-nav .nav-link {
+  color: rgba(248, 241, 228, 0.94) !important;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.92rem;
+  letter-spacing: 0.01em;
+}
+
+.navbar .nav-link:hover,
+.navbar .nav-link:focus,
+.navbar .navbar-nav .nav-link:hover,
+.navbar .navbar-nav .nav-link:focus {
+  color: var(--fx-lime) !important;
+}
+
+.navbar .nav-text,
+.navbar small.nav-text.text-muted {
+  color: rgba(248, 241, 228, 0.55) !important;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+}
+
+.navbar .form-control {
+  background-color: rgba(248, 241, 228, 0.06);
+  border: 1px solid rgba(248, 241, 228, 0.22);
+  color: var(--fx-paper);
+}
+
+.navbar .form-control::placeholder {
+  color: rgba(248, 241, 228, 0.5);
+}
+
+.navbar-toggler {
+  border-color: rgba(248, 241, 228, 0.35);
+}
+
+@media (min-width: 992px) {
+  .navbar .navbar-nav:last-child {
+    margin-right: clamp(2rem, 6vw, 6rem);
+  }
+
+  .navbar .form-inline {
+    position: relative;
+  }
+}
+
+.algolia-autocomplete {
+  width: 16rem;
+}
+
+.algolia-autocomplete .aa-dropdown-menu {
+  background: var(--fx-paper);
+  border: 1px solid var(--fx-ink);
+  box-shadow: 6px 6px 0 rgba(24, 92, 55, 0.22);
+  color: #161c18;
+  font-family: "IBM Plex Sans", sans-serif;
+  left: auto !important;
+  max-height: unquote("min(70vh, 30rem)");
+  min-width: 22rem;
+  overflow-y: auto;
+  right: 0 !important;
+  text-align: left;
+  white-space: normal;
+}
+
+.algolia-autocomplete .aa-suggestion {
+  color: #161c18;
+  cursor: pointer;
+  padding: 0.65rem 0.8rem;
+  white-space: normal;
+}
+
+.algolia-autocomplete .aa-suggestion + .aa-suggestion {
+  border-top: 1px solid rgba(24, 92, 55, 0.18);
+}
+
+.algolia-autocomplete .aa-suggestion.aa-cursor {
+  background: rgba(24, 92, 55, 0.12);
+}
+
+.algolia-autocomplete .search-details {
+  color: var(--fx-green);
+  display: inline;
+  font-weight: 700;
+}
+
+// ── Homepage header ─────────────────────────────────────────────────────────
+
+.template-home .page-header {
+  align-items: center;
+  border-bottom: 2px solid var(--fx-ink);
+  display: flex;
+  gap: 1.2rem;
+  margin-bottom: 2rem;
+  padding: 2.8rem 0 0.6rem;
+  position: relative;
+}
+
+.template-home .page-header::before {
+  color: var(--fx-rust);
+  content: "read_xlsx :: arrow_table :: rust_core";
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.76rem;
+  font-weight: 600;
+  left: 0;
+  letter-spacing: 0.12em;
+  position: absolute;
+  text-transform: uppercase;
+  top: 0.8rem;
+}
+
+.template-home .page-header .logo {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  clip-path: none;
+  flex-shrink: 0;
+  float: none;
+  height: clamp(4.2rem, 10vw, 6.8rem);
+  margin: 0;
+  padding: 0;
+  width: auto;
+}
+
+.template-home .page-header h1 {
+  color: var(--fx-ink);
+  font-family: "IBM Plex Serif", Georgia, serif;
+  font-size: clamp(3rem, 8vw, 5.2rem);
+  font-style: italic;
+  font-weight: 700;
+  letter-spacing: -0.06em;
+  line-height: 1;
+  margin: 0;
+}
+
+// ── Sections ─────────────────────────────────────────────────────────────────
+
+h1, h2, h3 {
+  color: var(--fx-ink);
+}
+
+main h2 {
+  border-bottom: 0;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  margin-top: 2.6rem;
+  position: relative;
+  text-transform: uppercase;
+}
+
+main h2::before {
+  color: var(--fx-rust);
+  content: "#";
+  margin-right: 0.45rem;
+}
+
+main h2::after {
+  background: repeating-linear-gradient(90deg, var(--fx-green) 0 18px, transparent 18px 24px);
+  content: "";
+  display: block;
+  height: 3px;
+  margin-top: 0.55rem;
+  width: unquote("min(20rem, 100%)");
+}
+
+main p,
+main li {
+  font-size: 1.03rem;
+  line-height: 1.68;
+}
+
+main a:not(.anchor) {
+  text-decoration-color: rgba(187, 77, 34, 0.45);
+  text-decoration-thickness: 0.12em;
+  text-underline-offset: 0.16em;
+}
+
+// ── Code blocks ──────────────────────────────────────────────────────────────
+// pkgdown emits: <div class="sourceCode"><pre class="downlit sourceCode r">
+// Both the div and the pre carry "sourceCode", so we must only style
+// div.sourceCode (the wrapper) and completely reset the inner pre.
+
+div.sourceCode {
+  background: #efe5d3;
+  border: 1px solid var(--fx-ink);
+  border-left: 8px solid var(--fx-green);
+  border-radius: 0;
+  box-shadow: 7px 7px 0 rgba(17, 24, 21, 0.12);
+  margin-bottom: 1.4rem;
+  overflow: hidden;
+}
+
+div.sourceCode > pre,
+div.sourceCode pre {
+  background: transparent !important;
+  border: 0 !important;
+  border-left: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  padding: 0.75rem 1rem !important;
+}
+
+// Standalone pre (not inside a sourceCode div)
+pre:not([class]) {
+  background: #efe5d3;
+  border: 1px solid var(--fx-ink);
+  border-left: 8px solid var(--fx-green);
+  border-radius: 0;
+  box-shadow: 7px 7px 0 rgba(17, 24, 21, 0.12);
+}
+
+code {
+  border-radius: 0;
+}
+
+// ── Sidebar ──────────────────────────────────────────────────────────────────
+
+.template-home aside {
+  padding-top: 3.7rem;
+}
+
+aside h2 {
+  font-size: 0.82rem;
+  margin-top: 0;
+}
+
+aside h2::after {
+  width: 5rem;
+}
+
+aside .links,
+aside .license,
+aside .citation,
+aside .developers,
+aside .community {
+  background: rgba(248, 241, 228, 0.78);
+  border: 1px solid var(--fx-ink);
+  box-shadow: 6px 6px 0 rgba(8, 122, 74, 0.18);
+  clip-path: polygon(0 0, calc(100% - 13px) 0, 100% 13px, 100% 100%, 0 100%);
+  margin-bottom: 1.1rem;
+  padding: 1rem;
+}
+
+main .form-control {
+  border-radius: 0;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+// ── Footer ───────────────────────────────────────────────────────────────────
+
+footer {
+  background: var(--fx-ink);
+  border-top: 3px solid var(--fx-rust);
+  color: var(--fx-paper);
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  margin-top: 5rem;
+  padding: 2rem 0;
+  position: relative;
+}
+
+footer::before {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--fx-lime) 0 10px,
+    transparent 10px 16px,
+    var(--fx-rust) 16px 18px,
+    transparent 18px 30px
+  );
+  content: "";
+  height: 3px;
+  left: 0;
+  position: absolute;
+  top: -3px;
+  width: unquote("min(19rem, 42vw)");
+}
+
+footer .container {
+  color: var(--fx-paper);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.86rem;
+  letter-spacing: 0.02em;
+}
+
+footer p {
+  color: var(--fx-paper);
+  margin: 0;
+}
+
+footer a {
+  color: var(--fx-lime);
+}
+
+footer a:hover {
+  color: var(--fx-paper);
+}
+
+// ── Responsive ───────────────────────────────────────────────────────────────
+
+@media (max-width: 767.98px) {
+  body {
+    background-size: 42px 100%, 100% 28px;
+  }
+
+  .template-home .page-header {
+    padding-top: 3.2rem;
+  }
+}

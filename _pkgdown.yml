@@ -1,6 +1,27 @@
 url: https://anthonyokc.github.io/fastexcel/
 template:
   bootstrap: 5
+  theme: arrow-light
+  bslib:
+    base_font: {google: "IBM Plex Sans"}
+    heading_font: {google: "IBM Plex Serif"}
+    code_font: {google: "IBM Plex Mono"}
+    bg: "#f8f1e4"
+    fg: "#161c18"
+    primary: "#185c37"
+    link-color: "#185c37"
+    link-hover-color: "#bb4d22"
+    navbar-light-bg: "#185c37"
+    navbar-light-color: "#f8f1e4"
+    navbar-light-hover-color: "#9fd89f"
+    navbar-light-active-color: "#ffffff"
+    border-color: "#cfc2af"
+    code-bg: "#eadfcc"
+    code-color: "#083d2a"
+
+navbar:
+  bg: dark
+  type: dark
 
 reference:
   - title: Read Excel files
@@ -9,5 +30,6 @@ reference:
   - title: Workbook metadata
     contents:
       - excel_sheets
+      - excel_sheet_info
       - excel_tables
       - excel_defined_names
