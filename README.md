@@ -7,7 +7,9 @@ uses [ToucanToco's Rust `fastexcel` crate](https://github.com/ToucanToco/fastexc
 
 - Read Excel worksheets into an `arrow::Table` by default.
 - Convert results to a tibble, data frame, or vectors when needed.
-- Read from a local file or in-memory workbook bytes.
+- Read from a local file or raw workbook bytes already in memory.
+- Read Excel files directly from cloud storage responses that return a raw
+  vector, without first writing the workbook to disk.
 - Select sheets by 1-based index or sheet name.
 - Read column ranges such as `"A:A"` and `"A:D"`, or select columns by name
   or position.
@@ -114,6 +116,28 @@ Read a named Excel table:
 read_excel_table(file, "Table1", as = "data.frame")
 ```
 
+## Benchmark
+
+On the latest 5-iteration benchmark of the bundled large workbook
+(`inst/extdata/synthetic_large.xlsx`, about 123 MB compressed), `fastexcel`
+was the fastest or effectively tied for fastest reader in this repo while using
+far less memory than `readxl` and `openxlsx2`.
+
+| Reader | Median time | R memory allocated |
+|---|---:|---:|
+| `fastexcel::read_excel(..., as = "data.frame")` | `4.64s` | `19.97MB` |
+| `fastexcel::read_excel(..., as = "arrow_table")` | `4.66s` | `21.63MB` |
+| `readxl::read_excel()` | `6.15s` | `622.55MB` |
+| `openxlsx2::read_xlsx()` | `31.21s` | `5.85GB` |
+
+For package users, the practical takeaway is simple: `fastexcel` stays fast on
+large workbooks without the memory spikes seen in the other readers benchmarked
+here.
+
+![Latest 5-iteration benchmark time chart](man/figures/fastexcel-benchmark-time.png)
+
+![Latest 5-iteration benchmark memory chart](man/figures/fastexcel-benchmark-memory.png)
+
 ## Security and Resource Limits
 
 Excel files can be expensive to parse, especially `.xlsx` files because they are
@@ -171,6 +195,9 @@ Read workbook bytes, such as the raw vector returned by cloud storage clients:
 bytes <- readBin(file, what = "raw", n = file.info(file)$size)
 read_excel(bytes, as = "data.frame")
 ```
+
+This raw-vector workflow makes it possible to read Excel workbooks directly
+from cloud storage downloads in R, without saving a temporary file first.
 
 With `googleCloudStorageR`, pass the downloaded raw object directly:
 

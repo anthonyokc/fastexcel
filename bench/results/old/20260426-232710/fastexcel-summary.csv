@@ -1,0 +1,5 @@
+"reader","min","median","itr_per_sec","mem_alloc","mem_alloc_bytes","n_gc","n_itr","total_time"
+"readxl_tibble"," 3.77s"," 6.77s",0.153088484947677,"607.37MB",636874808,21,10,"1.09m"
+"fastexcel_data_frame"," 4.44s"," 6.8s",0.151212472795349," 99.2MB",104015848,1,10,"1.1m"
+"fastexcel_arrow"," 4.32s"," 6.96s",0.158223108268263," 80.11MB",84002752,1,10,"1.05m"
+"openxlsx2_data_frame","26.42s","28.8s",0.0340027884645381,"  5.84GB",6267931432,53,10,"4.9m"
