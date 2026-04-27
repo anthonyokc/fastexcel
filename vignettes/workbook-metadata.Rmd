@@ -1,0 +1,93 @@
+---
+title: "Workbook Metadata"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Workbook Metadata}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+`fastexcel` includes helpers for inspecting a workbook before reading data. Use
+these helpers to discover sheet names, dimensions, column metadata, tables, and
+defined names.
+
+```{r setup}
+library(fastexcel)
+
+file <- system.file("extdata/Pop_Density.xlsx", package = "fastexcel")
+```
+
+## Sheets
+
+List available worksheets with `excel_sheets()`.
+
+```{r sheets}
+excel_sheets(file)
+```
+
+Use `excel_sheet_info()` to inspect worksheet dimensions and visibility.
+
+```{r sheet-info}
+excel_sheet_info(file)
+```
+
+Pass `sheet` to inspect a single worksheet.
+
+```{r sheet-info-one}
+excel_sheet_info(file, sheet = "Sheet1")
+```
+
+## Columns
+
+`excel_sheet_columns()` returns the names, positions, and inferred dtypes for a
+worksheet selection.
+
+```{r sheet-columns}
+excel_sheet_columns(file)
+```
+
+The same row, column, and dtype options used by `read_excel()` can be used when
+inspecting columns.
+
+```{r selected-columns}
+excel_sheet_columns(file, columns = c("city", "Year"))
+excel_sheet_columns(file, range = "A:C")
+```
+
+Set `available = TRUE` to inspect all available columns after applying header
+and dtype options, while ignoring `range` and `columns`.
+
+```{r available-columns}
+excel_sheet_columns(file, columns = "city", available = TRUE)
+```
+
+## Tables and Defined Names
+
+Use `excel_tables()` and `excel_table_info()` to discover named Excel tables.
+The bundled example workbook does not contain tables, so these return empty
+results for this file.
+
+```{r tables}
+excel_tables(file)
+excel_table_info(file)
+```
+
+When a workbook contains a named Excel table, read it directly with
+`read_excel_table()`.
+
+```{r read-table, eval = FALSE}
+read_excel_table(file, "Table1", as = "data.frame")
+```
+
+Defined names can be inspected with `excel_defined_names()`.
+
+```{r defined-names}
+excel_defined_names(file)
+```

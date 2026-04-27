@@ -1,0 +1,107 @@
+---
+title: "Reading Excel Workbooks"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Reading Excel Workbooks}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+`fastexcel` reads Excel workbooks through a Rust backend and returns Arrow
+objects by default. This keeps the read path efficient while still allowing you
+to convert to common R data structures when needed.
+
+```{r setup}
+library(fastexcel)
+
+file <- system.file("extdata/Pop_Density.xlsx", package = "fastexcel")
+```
+
+## Read a worksheet
+
+Call `read_excel()` with a workbook path. The default return value is an
+`arrow::Table`.
+
+```{r read-default}
+tbl <- read_excel(file)
+tbl
+```
+
+You can select a sheet by 1-based index or by sheet name.
+
+```{r read-sheet}
+read_excel(file, sheet = 1, n_max = 2)
+read_excel(file, sheet = "Sheet1", n_max = 2)
+```
+
+## Choose a return type
+
+Use `as` when you want a specific R object type.
+
+```{r return-types}
+read_excel(file, as = "data.frame")
+read_excel(file, as = "tibble")
+read_excel(file, as = "arrow_record_batch")
+```
+
+For one-column reads, you can return either an Arrow array or a base R vector.
+
+```{r one-column}
+read_excel(file, range = "A:A", as = "arrow_array")
+read_excel(file, range = "A:A", as = "vector")
+```
+
+## Select rows and columns
+
+Use Excel-style column ranges for contiguous column selections.
+
+```{r ranges}
+read_excel(file, range = "A:C", as = "data.frame")
+```
+
+Use `columns` to select by column name or 1-based column position.
+
+```{r columns}
+read_excel(file, columns = c("city", "Year"), as = "data.frame")
+read_excel(file, columns = c(1, 3), as = "data.frame")
+```
+
+Use `n_max` to limit the number of returned data rows.
+
+```{r n-max}
+read_excel(file, n_max = 3, as = "data.frame")
+```
+
+## Read workbook bytes
+
+`file` may also be a raw vector containing workbook bytes. This is useful when a
+cloud storage client returns the downloaded object directly in memory.
+
+```{r raw-bytes}
+bytes <- readBin(file, what = "raw", n = file.info(file)$size)
+bytes[1:5]
+read_excel(bytes, n_max = 2, as = "data.frame")
+```
+
+For example, `googleCloudStorageR::gcs_get_object()` can return object bytes as a
+raw vector. Pass those bytes directly to `read_excel()` without writing a
+temporary workbook to disk.
+
+```{r gcs-bytes, eval = FALSE}
+object <- "path/to/workbook.xlsx"
+
+bytes <- googleCloudStorageR::gcs_get_object(object)
+read_excel(bytes, as = "data.frame")
+```
+
+Keeping the workbook in memory avoids creating extra local file artifacts. That
+is especially useful for sensitive data workloads where reducing disk writes can
+lower the chance of leaving behind temporary files, cached copies, or cleanup
+gaps outside the R process.
