@@ -812,9 +812,10 @@ fn column_to_arrow(column: FastExcelColumn) -> Result<(Arc<Field>, ArrayRef)> {
                 .iter()
                 .map(|value| value.and_then(|value| value.and_utc().timestamp_nanos_opt()))
                 .collect::<Vec<_>>();
+            let array = TimestampNanosecondArray::from(converted).with_timezone("UTC");
             (
                 DataType::Timestamp(TimeUnit::Nanosecond, Some("UTC".into())),
-                Arc::new(TimestampNanosecondArray::from(converted)),
+                Arc::new(array),
             )
         }
         FastExcelSeries::Date(values) => {
