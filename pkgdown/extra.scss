@@ -260,6 +260,25 @@ main a:not(.anchor) {
   text-underline-offset: 0.16em;
 }
 
+.template-home #roadmap + p + .table,
+.template-home #roadmap + p + .table th,
+.template-home #roadmap + p + .table td,
+.template-home #roadmap + p + .table code {
+  font-size: 14px !important;
+}
+
+.template-home #roadmap + p + .table col:nth-child(1) {
+  width: 24% !important;
+}
+
+.template-home #roadmap + p + .table col:nth-child(2) {
+  width: 62% !important;
+}
+
+.template-home #roadmap + p + .table col:nth-child(3) {
+  width: 14% !important;
+}
+
 // ── Code blocks ──────────────────────────────────────────────────────────────
 // pkgdown emits: <div class="sourceCode"><pre class="downlit sourceCode r">
 // Both the div and the pre carry "sourceCode", so we must only style
