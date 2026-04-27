@@ -333,6 +333,7 @@ aside h2::after {
   width: 5rem;
 }
 
+.template-home aside #toc,
 aside .links,
 aside .license,
 aside .citation,
@@ -344,6 +345,26 @@ aside .community {
   clip-path: polygon(0 0, calc(100% - 13px) 0, 100% 13px, 100% 100%, 0 100%);
   margin-bottom: 1.1rem;
   padding: 1rem;
+}
+
+.template-home aside #toc {
+  position: static;
+  top: auto;
+}
+
+.template-home aside #toc ul {
+  margin-bottom: 0;
+}
+
+.template-home aside #toc li + li {
+  margin-top: 0.45rem;
+}
+
+.template-home aside #toc a {
+  display: block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.9rem;
+  text-decoration: none;
 }
 
 main .form-control {
