@@ -13,3 +13,4 @@
 ^src/.*\.o$
 ^src/.*\.so$
 ^src/rust/target$
+^LICENSE\.md$

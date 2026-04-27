@@ -1,15 +1,6 @@
-This package links to the upstream Rust crate fastexcel.
-This package depends almost entirely on fastexcel for Excel parsing, and the
-package author gratefully acknowledges and thanks the fastexcel authors for
-their work.
+# MIT License
 
-fastexcel
-Copyright (c) 2024 ToucanToco
-License: MIT
-Repository: https://github.com/ToucanToco/fastexcel
-License text: https://github.com/ToucanToco/fastexcel/blob/main/LICENSE
-
-MIT License
+Copyright (c) 2026 Anthony Flores
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

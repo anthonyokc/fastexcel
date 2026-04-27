@@ -281,4 +281,10 @@ package installation process.
 
 ## License
 
-MIT. See `LICENSE` for details.
+This R package is licensed under MIT. See `LICENSE` for details.
+
+This package links to ToucanToco's Rust `fastexcel` crate, which is also
+licensed under MIT. `fastexcel` provides nearly all of this package's Excel
+parsing functionality, and this package gratefully acknowledges and thanks its
+authors for their work. See [`inst/NOTICE`](inst/NOTICE) for upstream copyright
+and license details.
