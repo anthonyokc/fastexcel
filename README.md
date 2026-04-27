@@ -118,7 +118,7 @@ read_excel_table(file, "Table1", as = "data.frame")
 
 ## Benchmark
 
-On the latest 5-iteration benchmark of the bundled large workbook
+On the latest 5-iteration benchmark of the repository's large workbook
 (`inst/extdata/synthetic_large.xlsx`, about 123 MB compressed), `fastexcel`
 was the fastest or effectively tied for fastest reader in this repo while using
 far less memory than `readxl` and `openxlsx2`.

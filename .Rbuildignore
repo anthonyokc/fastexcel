@@ -6,6 +6,8 @@
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
+^bench$
+^cran-comments\.md$
 ^\.Rcheck$
 ^\.\.Rcheck$
 \.Rcheck$
@@ -14,4 +16,5 @@
 ^src/.*\.o$
 ^src/.*\.so$
 ^src/rust/target$
+^inst/extdata/synthetic_large\.xlsx$
 ^LICENSE\.md$
