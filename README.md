@@ -1,13 +1,13 @@
 # fastexcel <a href="https://anthonyokc.github.io/fastexcel/"><img src="man/figures/logo_fastexcel.png" align="right" height="138" /></a>
 
 `fastexcel` is an R package for reading Excel workbooks with a Rust backend. It
-uses ToucanToco's Rust `fastexcel` crate and returns Arrow-first results in R.
+uses [ToucanToco's Rust `fastexcel` crate](https://github.com/ToucanToco/fastexcel) and returns results in R.
 
 ## Features
 
 - Read Excel worksheets into an `arrow::Table` by default.
-- Read from a local file path or in-memory workbook bytes.
 - Convert results to a tibble, data frame, or vectors when needed.
+- Read from a local file path or in-memory workbook bytes.
 - Select sheets by 1-based index or sheet name.
 - Read column ranges such as `"A:A"` and `"A:D"`, or select columns by name
   or position.
