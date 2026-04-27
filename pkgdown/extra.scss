@@ -347,20 +347,11 @@ aside .community {
   padding: 1rem;
 }
 
-.template-home aside #toc {
-  position: static;
-  top: auto;
-}
-
-.template-home aside #toc ul {
+.template-home aside #toc > .nav {
   margin-bottom: 0;
 }
 
-.template-home aside #toc li + li {
-  margin-top: 0.45rem;
-}
-
-.template-home aside #toc a {
+.template-home aside #toc a.nav-link {
   display: block;
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.9rem;

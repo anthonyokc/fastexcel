@@ -22,20 +22,48 @@ document.addEventListener("DOMContentLoaded", function () {
   title.setAttribute("data-toc-skip", "");
   nav.appendChild(title);
 
-  const list = document.createElement("ul");
-  list.className = "list-unstyled";
-
-  headings.forEach(function (heading) {
-    const item = document.createElement("li");
-    const link = document.createElement("a");
-
-    link.href = "#" + heading.id;
-    link.textContent = heading.textContent.trim();
-
-    item.appendChild(link);
-    list.appendChild(item);
-  });
-
-  nav.appendChild(list);
   aside.appendChild(nav);
+
+  const initHomeTocTracking = function (attempt) {
+    const links = Array.from(nav.querySelectorAll('a.nav-link[href^="#"]'));
+
+    if (links.length === 0) {
+      if (attempt < 10) {
+        window.requestAnimationFrame(function () {
+          initHomeTocTracking(attempt + 1);
+        });
+      }
+      return;
+    }
+
+    const setActiveLink = function () {
+      const threshold = 96;
+      let activeId = headings[0].id;
+
+      headings.forEach(function (heading) {
+        if (heading.getBoundingClientRect().top <= threshold) {
+          activeId = heading.id;
+        }
+      });
+
+      links.forEach(function (link) {
+        const id = decodeURIComponent(link.getAttribute("href").slice(1));
+        const isActive = id === activeId;
+
+        link.classList.toggle("active", isActive);
+
+        if (isActive) {
+          link.setAttribute("aria-current", "true");
+        } else {
+          link.removeAttribute("aria-current");
+        }
+      });
+    };
+
+    setActiveLink();
+    window.addEventListener("scroll", setActiveLink, { passive: true });
+    window.addEventListener("resize", setActiveLink);
+  };
+
+  initHomeTocTracking(0);
 });
