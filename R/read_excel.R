@@ -115,6 +115,73 @@ read_excel <- function(path,
   )
 }
 
+#' Read an Excel table
+#'
+#' Reads a named Excel table from a workbook and returns an Arrow `Table` by
+#' default.
+#'
+#' @inheritParams read_excel
+#' @param table Name of the Excel table to read.
+#' @param columns Optional table columns to select, as a character vector of
+#'   column names or a numeric vector of 1-based column positions.
+#' @return The same output types as [read_excel()].
+#' @export
+read_excel_table <- function(path,
+                             table,
+                             col_names = TRUE,
+                             header_row = NULL,
+                             skip_rows = NULL,
+                             n_max = Inf,
+                             schema_sample_rows = NULL,
+                             dtype_coercion = c("coerce", "strict"),
+                             dtypes = NULL,
+                             skip_whitespace_tail_rows = FALSE,
+                             whitespace_as_null = FALSE,
+                             as = c("arrow_table", "arrow_record_batch", "arrow_array", "tibble", "data.frame", "vector"),
+                             columns = NULL) {
+  as <- match.arg(as)
+  dtype_coercion <- match.arg(dtype_coercion)
+  path <- validate_source(path)
+  table <- validate_table_name(table, "table")
+  columns <- validate_columns(columns)
+  col_names <- validate_col_names(col_names)
+  header_row <- validate_optional_row_count(header_row, "header_row", zero_allowed = FALSE)
+  skip_rows <- validate_optional_row_count(skip_rows, "skip_rows", zero_allowed = TRUE)
+  n_max <- validate_n_max(n_max)
+  schema_sample_rows <- validate_optional_row_count(schema_sample_rows, "schema_sample_rows", zero_allowed = FALSE)
+  dtypes <- validate_dtypes(dtypes)
+  skip_whitespace_tail_rows <- validate_flag(skip_whitespace_tail_rows, "skip_whitespace_tail_rows")
+  whitespace_as_null <- validate_flag(whitespace_as_null, "whitespace_as_null")
+
+  arrow <- read_excel_table_arrow_object(
+    path = path,
+    table = table,
+    columns = columns,
+    col_names = col_names,
+    header_row = header_row,
+    skip_rows = skip_rows,
+    n_max = n_max,
+    schema_sample_rows = schema_sample_rows,
+    dtype_coercion = dtype_coercion,
+    dtypes = dtypes,
+    skip_whitespace_tail_rows = skip_whitespace_tail_rows,
+    whitespace_as_null = whitespace_as_null,
+    single_column = identical(as, "arrow_array")
+  )
+  switch(
+    as,
+    arrow_table = arrow::arrow_table(arrow),
+    arrow_record_batch = arrow,
+    arrow_array = arrow,
+    tibble = {
+      require_namespace("tibble")
+      tibble::as_tibble(as.data.frame(arrow))
+    },
+    data.frame = as.data.frame(arrow),
+    vector = arrow_tabular_to_vectors(arrow)
+  )
+}
+
 #' List sheet names in an Excel workbook
 #'
 #' @param path Path to an Excel workbook, or a raw vector containing workbook
@@ -167,6 +234,32 @@ excel_tables <- function(path, sheet = NULL) {
   .excel_tables(path, zip_limits(), sheet)
 }
 
+#' Inspect Excel table metadata in a workbook
+#'
+#' @param path Path to an Excel workbook, or a raw vector containing workbook
+#'   bytes.
+#' @param table Optional table name used to limit results to one table.
+#' @return A tibble with one row per table and columns `name`, `sheet_name`,
+#'   `width`, `height`, and `total_height`.
+#' @export
+excel_table_info <- function(path, table = NULL) {
+  require_namespace("tibble")
+  path <- validate_source(path)
+  if (is.null(table)) {
+    table <- NA_character_
+  } else {
+    table <- validate_table_name(table, "table")
+  }
+  out <- .excel_table_info(path, zip_limits(), table)
+  tibble::tibble(
+    name = out$name,
+    sheet_name = out$sheet_name,
+    width = out$width,
+    height = out$height,
+    total_height = out$total_height
+  )
+}
+
 #' List defined names in an Excel workbook
 #'
 #' @param path Path to an Excel workbook, or a raw vector containing workbook
@@ -198,13 +291,54 @@ read_excel_arrow_object <- function(path,
                                     whitespace_as_null,
                                     single_column) {
   require_namespace("arrow")
-  array <- getFromNamespace("allocate_arrow_array", "arrow")()
-  schema <- getFromNamespace("allocate_arrow_schema", "arrow")()
+  array <- utils::getFromNamespace("allocate_arrow_array", "arrow")()
+  schema <- utils::getFromNamespace("allocate_arrow_schema", "arrow")()
   .read_excel_arrow(
     path,
     zip_limits(),
     sheet,
     range,
+    columns,
+    col_names,
+    header_row,
+    skip_rows,
+    n_max,
+    schema_sample_rows,
+    dtype_coercion,
+    dtypes,
+    skip_whitespace_tail_rows,
+    whitespace_as_null,
+    array,
+    schema,
+    single_column
+  )
+  if (single_column) {
+    arrow::Array$import_from_c(array, schema)
+  } else {
+    arrow::RecordBatch$import_from_c(array, schema)
+  }
+}
+
+read_excel_table_arrow_object <- function(path,
+                                          table,
+                                          columns,
+                                          col_names,
+                                          header_row,
+                                          skip_rows,
+                                          n_max,
+                                          schema_sample_rows,
+                                          dtype_coercion,
+                                          dtypes,
+                                          skip_whitespace_tail_rows,
+                                          whitespace_as_null,
+                                          single_column) {
+  require_namespace("arrow")
+  array <- utils::getFromNamespace("allocate_arrow_array", "arrow")()
+  schema <- utils::getFromNamespace("allocate_arrow_schema", "arrow")()
+  .read_excel_table_arrow(
+    path,
+    zip_limits(),
+    table,
     columns,
     col_names,
     header_row,
@@ -319,6 +453,13 @@ validate_columns <- function(columns) {
     return(as.integer(columns))
   }
   stop("`columns` must be NULL, a non-empty character vector, or a non-empty numeric vector of positive integer positions.", call. = FALSE)
+}
+
+validate_table_name <- function(table, name) {
+  if (is.character(table) && length(table) == 1L && !is.na(table) && nzchar(table)) {
+    return(table)
+  }
+  stop("`", name, "` must be a single non-empty string.", call. = FALSE)
 }
 
 validate_col_names <- function(col_names) {

@@ -119,25 +119,46 @@ fn read_excel_arrow(
         whitespace_as_null,
     )?;
 
-    if single_column {
-        if columns.len() != 1 {
-            return Err(Error::Other(
-                "`as = \"arrow_array\"` requires exactly one selected column.".to_string(),
-            ));
-        }
-        let (_field, values) = column_to_arrow(columns.into_iter().next().unwrap())?;
-        export_array(values, array, schema)?;
-    } else {
-        let mut arrays = Vec::with_capacity(columns.len());
-        for column in columns {
-            let (field, values) = column_to_arrow(column)?;
-            arrays.push((field, values));
-        }
-        let struct_array: ArrayRef = Arc::new(StructArray::from(arrays));
-        export_array(struct_array, array, schema)?;
-    }
+    export_columns(columns, array, schema, single_column)
+}
 
-    Ok(())
+#[extendr]
+#[allow(clippy::too_many_arguments)]
+fn read_excel_table_arrow(
+    source: Robj,
+    zip_limits: Robj,
+    table: &str,
+    columns: Robj,
+    col_names: Robj,
+    header_row: Robj,
+    skip_rows: Robj,
+    n_max: Robj,
+    schema_sample_rows: Robj,
+    dtype_coercion: Robj,
+    dtypes: Robj,
+    skip_whitespace_tail_rows: bool,
+    whitespace_as_null: bool,
+    array: Robj,
+    schema: Robj,
+    single_column: bool,
+) -> Result<()> {
+    let columns = load_table_columns(
+        source,
+        zip_limits,
+        table,
+        columns,
+        col_names,
+        header_row,
+        skip_rows,
+        n_max,
+        schema_sample_rows,
+        dtype_coercion,
+        dtypes,
+        skip_whitespace_tail_rows,
+        whitespace_as_null,
+    )?;
+
+    export_columns(columns, array, schema, single_column)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -158,7 +179,77 @@ fn load_columns(
     whitespace_as_null: bool,
 ) -> Result<Vec<FastExcelColumn>> {
     let mut reader = reader_from_source(source, zip_limits)?;
-    let mut opts = LoadSheetOrTableOptions::new_for_sheet();
+    let opts = load_options(
+        LoadSheetOrTableOptions::new_for_sheet(),
+        range,
+        columns,
+        col_names,
+        header_row,
+        skip_rows,
+        n_max,
+        schema_sample_rows,
+        dtype_coercion,
+        dtypes,
+        skip_whitespace_tail_rows,
+        whitespace_as_null,
+    )?;
+
+    let idx_or_name = sheet_to_idx_or_name(sheet)?;
+    let sheet = reader.load_sheet(idx_or_name, opts).map_err(to_r_error)?;
+    sheet.to_columns().map_err(to_r_error)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn load_table_columns(
+    source: Robj,
+    zip_limits: Robj,
+    table: &str,
+    columns: Robj,
+    col_names: Robj,
+    header_row: Robj,
+    skip_rows: Robj,
+    n_max: Robj,
+    schema_sample_rows: Robj,
+    dtype_coercion: Robj,
+    dtypes: Robj,
+    skip_whitespace_tail_rows: bool,
+    whitespace_as_null: bool,
+) -> Result<Vec<FastExcelColumn>> {
+    let mut reader = reader_from_source(source, zip_limits)?;
+    let opts = load_options(
+        LoadSheetOrTableOptions::new_for_table(),
+        Robj::from(()),
+        columns,
+        col_names,
+        header_row,
+        skip_rows,
+        n_max,
+        schema_sample_rows,
+        dtype_coercion,
+        dtypes,
+        skip_whitespace_tail_rows,
+        whitespace_as_null,
+    )?;
+
+    let table = reader.load_table(table, opts).map_err(to_r_error)?;
+    table.to_columns().map_err(to_r_error)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn load_options(
+    mut opts: LoadSheetOrTableOptions,
+    range: Robj,
+    columns: Robj,
+    col_names: Robj,
+    header_row: Robj,
+    skip_rows: Robj,
+    n_max: Robj,
+    schema_sample_rows: Robj,
+    dtype_coercion: Robj,
+    dtypes: Robj,
+    skip_whitespace_tail_rows: bool,
+    whitespace_as_null: bool,
+) -> Result<LoadSheetOrTableOptions> {
 
     if col_names.as_bool() == Some(false) {
         opts = opts.no_header_row();
@@ -204,9 +295,7 @@ fn load_columns(
         opts = opts.selected_columns(selection);
     }
 
-    let idx_or_name = sheet_to_idx_or_name(sheet)?;
-    let sheet = reader.load_sheet(idx_or_name, opts).map_err(to_r_error)?;
-    sheet.to_columns().map_err(to_r_error)
+    Ok(opts)
 }
 
 fn optional_positive_integer(value: Robj) -> Result<Option<usize>> {
@@ -301,6 +390,46 @@ fn excel_tables(source: Robj, zip_limits: Robj, sheet: Robj) -> Result<Vec<Strin
         .into_iter()
         .map(String::from)
         .collect())
+}
+
+#[extendr]
+fn excel_table_info(source: Robj, zip_limits: Robj, table: Robj) -> Result<List> {
+    let mut reader = reader_from_source(source, zip_limits)?;
+    let table_names = if let Some(name) = table.as_str().filter(|s| !s.is_empty() && *s != "NA") {
+        vec![name.to_string()]
+    } else {
+        reader
+            .table_names(None)
+            .map_err(to_r_error)?
+            .into_iter()
+            .map(String::from)
+            .collect()
+    };
+
+    let mut names = Vec::with_capacity(table_names.len());
+    let mut sheet_names = Vec::with_capacity(table_names.len());
+    let mut widths = Vec::with_capacity(table_names.len());
+    let mut heights = Vec::with_capacity(table_names.len());
+    let mut total_heights = Vec::with_capacity(table_names.len());
+
+    for name in table_names {
+        let mut table = reader
+            .load_table(&name, LoadSheetOrTableOptions::new_for_table())
+            .map_err(to_r_error)?;
+        names.push(table.name().to_string());
+        sheet_names.push(table.sheet_name().to_string());
+        widths.push(table.width() as i32);
+        heights.push(table.height() as i32);
+        total_heights.push(table.total_height() as i32);
+    }
+
+    Ok(list!(
+        name = names,
+        sheet_name = sheet_names,
+        width = widths,
+        height = heights,
+        total_height = total_heights
+    ))
 }
 
 fn sheet_refs(reader: &ExcelReader, sheet: Robj) -> Result<Vec<IdxOrName>> {
@@ -600,6 +729,33 @@ fn column_to_arrow(column: FastExcelColumn) -> Result<(Arc<Field>, ArrayRef)> {
     Ok((Arc::new(Field::new(name, data_type, true)), values))
 }
 
+fn export_columns(
+    columns: Vec<FastExcelColumn>,
+    array: Robj,
+    schema: Robj,
+    single_column: bool,
+) -> Result<()> {
+    if single_column {
+        if columns.len() != 1 {
+            return Err(Error::Other(
+                "`as = \"arrow_array\"` requires exactly one selected column.".to_string(),
+            ));
+        }
+        let (_field, values) = column_to_arrow(columns.into_iter().next().unwrap())?;
+        export_array(values, array, schema)?;
+    } else {
+        let mut arrays = Vec::with_capacity(columns.len());
+        for column in columns {
+            let (field, values) = column_to_arrow(column)?;
+            arrays.push((field, values));
+        }
+        let struct_array: ArrayRef = Arc::new(StructArray::from(arrays));
+        export_array(struct_array, array, schema)?;
+    }
+
+    Ok(())
+}
+
 fn export_array(values: ArrayRef, array: Robj, schema: Robj) -> Result<()> {
     let array_ptr = external_pointer_addr::<FFI_ArrowArray>(&array)?;
     let schema_ptr = external_pointer_addr::<FFI_ArrowSchema>(&schema)?;
@@ -730,8 +886,10 @@ extendr_module! {
     mod fastexcel;
     fn read_excel_columns;
     fn read_excel_arrow;
+    fn read_excel_table_arrow;
     fn excel_sheets;
     fn excel_sheet_info;
     fn excel_tables;
+    fn excel_table_info;
     fn excel_defined_names;
 }

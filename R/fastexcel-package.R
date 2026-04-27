@@ -33,4 +33,5 @@
 #' worker process isolation, memory limits, and timeouts.
 #'
 #' @keywords internal
+#' @useDynLib fastexcel, .registration = TRUE
 "_PACKAGE"

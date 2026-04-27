@@ -15,6 +15,7 @@ uses [ToucanToco's Rust `fastexcel` crate](https://github.com/ToucanToco/fastexc
   whitespace handling.
 - Inspect workbook metadata with sheet names, sheet dimensions, table, and
   defined-name helpers.
+- Read named Excel tables and inspect table dimensions.
 
 ## Requirements
 
@@ -97,7 +98,14 @@ Inspect workbook metadata:
 excel_sheets(path)
 excel_sheet_info(path)
 excel_tables(path)
+excel_table_info(path)
 excel_defined_names(path)
+```
+
+Read a named Excel table:
+
+```r
+read_excel_table(path, "Table1", as = "data.frame")
 ```
 
 ## Security and Resource Limits
@@ -217,6 +225,8 @@ read_excel(
   name.
 - `excel_tables(path, sheet = NULL)`: returns table names, optionally filtered by
   sheet name.
+- `excel_table_info(path, table = NULL)`: returns table names, parent sheet
+  names, and dimensions, optionally filtered by table name.
 - `excel_defined_names(path)`: returns defined-name metadata as a data frame.
 
 ## Roadmap
@@ -244,6 +254,7 @@ Legend: ✅ implemented, ◐ partially implemented, ❌ not implemented.
 | Select columns by Excel range/string | `range`, documented for `A:A`, `A:D`; Rust path also delegates to upstream parser | ◐ |
 | List table names | `excel_tables(path)` or `excel_tables(raw_bytes)` | ✅ |
 | Filter table names by sheet name | `excel_tables(path, sheet = "Sheet1")` | ✅ |
+| Inspect table metadata | `excel_table_info(path)` or `excel_table_info(raw_bytes)` | ✅ |
 | List defined names / named ranges | `excel_defined_names(path)` or `excel_defined_names(raw_bytes)` | ✅ |
 | Primitive dtype conversion | bool/string/int/float/date/datetime/duration handled in Rust bridge | ✅ |
 | Supported workbook formats from upstream `fastexcel`/`calamine` | Uses upstream `fastexcel::read_excel(path)` | ✅ |
@@ -261,9 +272,9 @@ Legend: ✅ implemented, ◐ partially implemented, ❌ not implemented.
 | `ExcelSheet` metadata: name, width, height, total height, visibility | `excel_sheet_info(path)` or `excel_sheet_info(raw_bytes)` | ✅ |
 | Sheet `selected_columns`, `available_columns`, `specified_dtypes` | Not exposed | ❌ |
 | `to_arrow_with_errors` / cell parse error reporting | Not exposed | ❌ |
-| `load_table` | Not exposed | ❌ |
-| `ExcelTable` object/metadata | Not exposed | ❌ |
-| Table-to-Arrow/dataframe conversion | Not exposed | ❌ |
+| `load_table` | `read_excel_table(path, "Table1")` | ✅ |
+| `ExcelTable` object/metadata | `excel_table_info(path)` exposes table metadata; lazy table objects are not exposed | ◐ |
+| Table-to-Arrow/dataframe conversion | `read_excel_table(..., as = "arrow_table")`, `"data.frame"`, `"tibble"`, or `"vector"` | ✅ |
 | `ColumnInfo` metadata | Not exposed | ❌ |
 | Typed exception classes | R receives string errors only | ◐ |
 

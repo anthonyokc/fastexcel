@@ -8,6 +8,10 @@
   check_extendr_result(.Call(wrap__read_excel_arrow, source, zip_limits, sheet, range, columns, col_names, header_row, skip_rows, n_max, schema_sample_rows, dtype_coercion, dtypes, skip_whitespace_tail_rows, whitespace_as_null, array, schema, single_column))
 }
 
+.read_excel_table_arrow <- function(source, zip_limits, table, columns, col_names, header_row, skip_rows, n_max, schema_sample_rows, dtype_coercion, dtypes, skip_whitespace_tail_rows, whitespace_as_null, array, schema, single_column) {
+  check_extendr_result(.Call(wrap__read_excel_table_arrow, source, zip_limits, table, columns, col_names, header_row, skip_rows, n_max, schema_sample_rows, dtype_coercion, dtypes, skip_whitespace_tail_rows, whitespace_as_null, array, schema, single_column))
+}
+
 .excel_sheets <- function(source, zip_limits) {
   check_extendr_result(.Call(wrap__excel_sheets, source, zip_limits))
 }
@@ -18,6 +22,10 @@
 
 .excel_tables <- function(source, zip_limits, sheet) {
   check_extendr_result(.Call(wrap__excel_tables, source, zip_limits, sheet))
+}
+
+.excel_table_info <- function(source, zip_limits, table) {
+  check_extendr_result(.Call(wrap__excel_table_info, source, zip_limits, table))
 }
 
 .excel_defined_names <- function(source, zip_limits) {

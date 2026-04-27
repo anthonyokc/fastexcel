@@ -14,6 +14,81 @@ expected_names <- c(
   "density_ratio_to_KC"
 )
 
+table_fixture <- function() {
+  tmp <- tempfile("fastexcel-table-")
+  dir.create(file.path(tmp, "_rels"), recursive = TRUE)
+  dir.create(file.path(tmp, "xl", "_rels"), recursive = TRUE)
+  dir.create(file.path(tmp, "xl", "worksheets", "_rels"), recursive = TRUE)
+  dir.create(file.path(tmp, "xl", "tables"), recursive = TRUE)
+
+  writeLines(c(
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>',
+    '<Default Extension="xml" ContentType="application/xml"/>',
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>',
+    '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>',
+    '<Override PartName="/xl/tables/table1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/>',
+    '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>',
+    '</Types>'
+  ), file.path(tmp, "[Content_Types].xml"))
+  writeLines(c(
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>',
+    '</Relationships>'
+  ), file.path(tmp, "_rels", ".rels"))
+  writeLines(c(
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+    '<sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets>',
+    '</workbook>'
+  ), file.path(tmp, "xl", "workbook.xml"))
+  writeLines(c(
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>',
+    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>',
+    '</Relationships>'
+  ), file.path(tmp, "xl", "_rels", "workbook.xml.rels"))
+  writeLines(c(
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+    '<dimension ref="A1:B3"/>',
+    '<sheetData>',
+    '<row r="1"><c r="A1" t="inlineStr"><is><t>city</t></is></c><c r="B1" t="inlineStr"><is><t>year</t></is></c></row>',
+    '<row r="2"><c r="A2" t="inlineStr"><is><t>Kansas City</t></is></c><c r="B2"><v>2020</v></c></row>',
+    '<row r="3"><c r="A3" t="inlineStr"><is><t>Tulsa</t></is></c><c r="B3"><v>2021</v></c></row>',
+    '</sheetData>',
+    '<tableParts count="1"><tablePart r:id="rId1"/></tableParts>',
+    '</worksheet>'
+  ), file.path(tmp, "xl", "worksheets", "sheet1.xml"))
+  writeLines(c(
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table1.xml"/>',
+    '</Relationships>'
+  ), file.path(tmp, "xl", "worksheets", "_rels", "sheet1.xml.rels"))
+  writeLines(c(
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="PopulationTable" displayName="PopulationTable" ref="A1:B3" totalsRowShown="0">',
+    '<autoFilter ref="A1:B3"/>',
+    '<tableColumns count="2"><tableColumn id="1" name="city"/><tableColumn id="2" name="year"/></tableColumns>',
+    '<tableStyleInfo name="TableStyleMedium2" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/>',
+    '</table>'
+  ), file.path(tmp, "xl", "tables", "table1.xml"))
+  writeLines(c(
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="1"><font/></fonts><fills count="1"><fill/></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf/></cellStyleXfs><cellXfs count="1"><xf/></cellXfs></styleSheet>'
+  ), file.path(tmp, "xl", "styles.xml"))
+
+  out <- tempfile(fileext = ".xlsx")
+  old <- setwd(tmp)
+  on.exit(setwd(old), add = TRUE)
+  utils::zip(out, list.files(tmp, recursive = TRUE), flags = "-q")
+  out
+}
+
 test_that("read_excel returns an Arrow Table by default", {
   skip_if_not_installed("arrow")
   table <- read_excel(fixture())
@@ -147,6 +222,42 @@ test_that("metadata helpers accept workbook bytes", {
   expect_s3_class(excel_sheet_info(bytes), "tbl_df")
   expect_type(excel_tables(bytes), "character")
   expect_s3_class(excel_defined_names(bytes), "data.frame")
+})
+
+test_that("table metadata and table loading work", {
+  skip_if_not_installed("arrow")
+
+  path <- table_fixture()
+  expect_equal(excel_tables(path), "PopulationTable")
+
+  info <- excel_table_info(path)
+  expect_s3_class(info, "tbl_df")
+  expect_equal(names(info), c("name", "sheet_name", "width", "height", "total_height"))
+  expect_equal(info$name, "PopulationTable")
+  expect_equal(info$sheet_name, "Sheet1")
+  expect_equal(info$width, 2L)
+  expect_equal(info$height, 2L)
+  expect_equal(info$total_height, 2L)
+  expect_equal(excel_table_info(path, table = "PopulationTable"), info)
+
+  df <- read_excel_table(path, "PopulationTable", as = "data.frame")
+  expect_equal(names(df), c("city", "year"))
+  expect_equal(df$city, c("Kansas City", "Tulsa"))
+  expect_equal(df$year, c(2020, 2021))
+
+  selected <- read_excel_table(path, "PopulationTable", columns = "city", as = "vector")
+  expect_equal(selected, c("Kansas City", "Tulsa"))
+})
+
+test_that("table helpers accept workbook bytes", {
+  skip_if_not_installed("arrow")
+
+  path <- table_fixture()
+  bytes <- readBin(path, what = "raw", n = file.info(path)$size)
+
+  expect_equal(excel_tables(bytes), "PopulationTable")
+  expect_s3_class(excel_table_info(bytes), "tbl_df")
+  expect_equal(read_excel_table(bytes, "PopulationTable", columns = "year", as = "vector"), c(2020, 2021))
 })
 
 test_that("workbooks are rejected when they exceed the configured size limit", {

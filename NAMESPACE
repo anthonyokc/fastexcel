@@ -3,6 +3,8 @@
 export(excel_defined_names)
 export(excel_sheet_info)
 export(excel_sheets)
+export(excel_table_info)
 export(excel_tables)
 export(read_excel)
+export(read_excel_table)
 useDynLib(fastexcel, .registration = TRUE)
