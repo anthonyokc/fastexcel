@@ -215,6 +215,24 @@ test_that("columns can select by name or position", {
   expect_equal(by_position, by_name)
 })
 
+test_that("sheet column metadata reports selected and available columns", {
+  selected <- excel_sheet_columns(fixture(), columns = c("city", "Year"))
+  expect_s3_class(selected, "tbl_df")
+  expect_equal(names(selected), c("name", "index", "absolute_index", "dtype", "column_name_from", "dtype_from"))
+  expect_equal(selected$name, expected_names[1:2])
+  expect_equal(selected$index, 1:2)
+  expect_equal(selected$absolute_index, 1:2)
+  expect_equal(selected$column_name_from, rep("looked_up", 2))
+
+  typed <- excel_sheet_columns(fixture(), columns = "Year", dtypes = c(Year = "string"))
+  expect_equal(typed$dtype, "string")
+  expect_equal(typed$dtype_from, "provided_by_name")
+
+  available <- excel_sheet_columns(fixture(), columns = "city", available = TRUE)
+  expect_equal(available$name, expected_names)
+  expect_equal(nrow(available), length(expected_names))
+})
+
 test_that("metadata helpers accept workbook bytes", {
   bytes <- readBin(fixture(), what = "raw", n = file.info(fixture())$size)
 
@@ -249,6 +267,26 @@ test_that("table metadata and table loading work", {
   expect_equal(selected, c("Kansas City", "Tulsa"))
 })
 
+test_that("table column metadata reports selected and available columns", {
+  path <- table_fixture()
+
+  selected <- excel_table_columns(path, "PopulationTable", columns = "city")
+  expect_s3_class(selected, "tbl_df")
+  expect_equal(names(selected), c("name", "index", "absolute_index", "dtype", "column_name_from", "dtype_from"))
+  expect_equal(selected$name, "city")
+  expect_equal(selected$index, 1L)
+  expect_equal(selected$absolute_index, 1L)
+  expect_equal(selected$dtype, "string")
+
+  typed <- excel_table_columns(path, "PopulationTable", columns = "year", dtypes = c(year = "string"))
+  expect_equal(typed$dtype, "string")
+  expect_equal(typed$dtype_from, "provided_by_name")
+
+  available <- excel_table_columns(path, "PopulationTable", columns = "city", available = TRUE)
+  expect_equal(available$name, c("city", "year"))
+  expect_equal(nrow(available), 2L)
+})
+
 test_that("table helpers accept workbook bytes", {
   skip_if_not_installed("arrow")
 
@@ -257,6 +295,7 @@ test_that("table helpers accept workbook bytes", {
 
   expect_equal(excel_tables(bytes), "PopulationTable")
   expect_s3_class(excel_table_info(bytes), "tbl_df")
+  expect_s3_class(excel_table_columns(bytes, "PopulationTable"), "tbl_df")
   expect_equal(read_excel_table(bytes, "PopulationTable", columns = "year", as = "vector"), c(2020, 2021))
 })
 

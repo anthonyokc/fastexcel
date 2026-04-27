@@ -8,8 +8,8 @@ use chrono::{NaiveDate, NaiveDateTime, Timelike};
 use extendr_api::prelude::*;
 use extendr_api::R_ExternalPtrAddr;
 use fastexcel_rs::{
-    read_excel, DType, DTypeCoercion, DTypes, ExcelReader, FastExcelColumn, FastExcelSeries,
-    IdxOrName, LoadSheetOrTableOptions, SelectedColumns, SheetVisible, SkipRows,
+    read_excel, ColumnInfo, DType, DTypeCoercion, DTypes, ExcelReader, FastExcelColumn,
+    FastExcelSeries, IdxOrName, LoadSheetOrTableOptions, SelectedColumns, SheetVisible, SkipRows,
 };
 use std::collections::HashMap;
 use std::fs::File;
@@ -250,7 +250,6 @@ fn load_options(
     skip_whitespace_tail_rows: bool,
     whitespace_as_null: bool,
 ) -> Result<LoadSheetOrTableOptions> {
-
     if col_names.as_bool() == Some(false) {
         opts = opts.no_header_row();
     } else if let Some(names) = col_names.as_str_vector() {
@@ -381,6 +380,52 @@ fn excel_sheet_info(source: Robj, zip_limits: Robj, sheet: Robj) -> Result<List>
 }
 
 #[extendr]
+#[allow(clippy::too_many_arguments)]
+fn excel_sheet_columns(
+    source: Robj,
+    zip_limits: Robj,
+    sheet: Robj,
+    range: Robj,
+    columns: Robj,
+    col_names: Robj,
+    header_row: Robj,
+    skip_rows: Robj,
+    n_max: Robj,
+    schema_sample_rows: Robj,
+    dtype_coercion: Robj,
+    dtypes: Robj,
+    skip_whitespace_tail_rows: bool,
+    whitespace_as_null: bool,
+    available: bool,
+) -> Result<List> {
+    let mut reader = reader_from_source(source, zip_limits)?;
+    let opts = load_options(
+        LoadSheetOrTableOptions::new_for_sheet(),
+        range,
+        columns,
+        col_names,
+        header_row,
+        skip_rows,
+        n_max,
+        schema_sample_rows,
+        dtype_coercion,
+        dtypes,
+        skip_whitespace_tail_rows,
+        whitespace_as_null,
+    )?;
+
+    let mut sheet = reader
+        .load_sheet(sheet_to_idx_or_name(sheet)?, opts)
+        .map_err(to_r_error)?;
+    let columns = if available {
+        sheet.available_columns().map_err(to_r_error)?
+    } else {
+        sheet.selected_columns().clone()
+    };
+    column_info_to_list(columns)
+}
+
+#[extendr]
 fn excel_tables(source: Robj, zip_limits: Robj, sheet: Robj) -> Result<Vec<String>> {
     let mut reader = reader_from_source(source, zip_limits)?;
     let sheet_name = sheet.as_str().filter(|s| !s.is_empty() && *s != "NA");
@@ -432,6 +477,49 @@ fn excel_table_info(source: Robj, zip_limits: Robj, table: Robj) -> Result<List>
     ))
 }
 
+#[extendr]
+#[allow(clippy::too_many_arguments)]
+fn excel_table_columns(
+    source: Robj,
+    zip_limits: Robj,
+    table: &str,
+    columns: Robj,
+    col_names: Robj,
+    header_row: Robj,
+    skip_rows: Robj,
+    n_max: Robj,
+    schema_sample_rows: Robj,
+    dtype_coercion: Robj,
+    dtypes: Robj,
+    skip_whitespace_tail_rows: bool,
+    whitespace_as_null: bool,
+    available: bool,
+) -> Result<List> {
+    let mut reader = reader_from_source(source, zip_limits)?;
+    let opts = load_options(
+        LoadSheetOrTableOptions::new_for_table(),
+        Robj::from(()),
+        columns,
+        col_names,
+        header_row,
+        skip_rows,
+        n_max,
+        schema_sample_rows,
+        dtype_coercion,
+        dtypes,
+        skip_whitespace_tail_rows,
+        whitespace_as_null,
+    )?;
+
+    let mut table = reader.load_table(table, opts).map_err(to_r_error)?;
+    let columns = if available {
+        table.available_columns().map_err(to_r_error)?
+    } else {
+        table.selected_columns()
+    };
+    column_info_to_list(columns)
+}
+
 fn sheet_refs(reader: &ExcelReader, sheet: Robj) -> Result<Vec<IdxOrName>> {
     if sheet.is_null() {
         return Ok(reader
@@ -450,6 +538,33 @@ fn sheet_visibility_to_str(visibility: SheetVisible) -> &'static str {
         SheetVisible::Hidden => "hidden",
         SheetVisible::VeryHidden => "very_hidden",
     }
+}
+
+fn column_info_to_list(columns: Vec<ColumnInfo>) -> Result<List> {
+    let mut names = Vec::with_capacity(columns.len());
+    let mut indices = Vec::with_capacity(columns.len());
+    let mut absolute_indices = Vec::with_capacity(columns.len());
+    let mut dtypes = Vec::with_capacity(columns.len());
+    let mut column_name_from = Vec::with_capacity(columns.len());
+    let mut dtype_from = Vec::with_capacity(columns.len());
+
+    for column in columns {
+        names.push(column.name);
+        indices.push((column.index + 1) as i32);
+        absolute_indices.push((column.absolute_index + 1) as i32);
+        dtypes.push(column.dtype.to_string());
+        column_name_from.push(column.column_name_from.to_string());
+        dtype_from.push(column.dtype_from.to_string());
+    }
+
+    Ok(list!(
+        name = names,
+        index = indices,
+        absolute_index = absolute_indices,
+        dtype = dtypes,
+        column_name_from = column_name_from,
+        dtype_from = dtype_from
+    ))
 }
 
 #[extendr]
@@ -889,7 +1004,9 @@ extendr_module! {
     fn read_excel_table_arrow;
     fn excel_sheets;
     fn excel_sheet_info;
+    fn excel_sheet_columns;
     fn excel_tables;
     fn excel_table_info;
+    fn excel_table_columns;
     fn excel_defined_names;
 }

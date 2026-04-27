@@ -217,6 +217,73 @@ excel_sheet_info <- function(path, sheet = NULL) {
   )
 }
 
+#' Inspect sheet column metadata in an Excel workbook
+#'
+#' @inheritParams read_excel
+#' @param available If `FALSE`, return metadata for the selected columns. If
+#'   `TRUE`, return metadata for all available columns after applying header and
+#'   dtype options, ignoring `range` and `columns`.
+#' @return A tibble with one row per column and columns `name`, `index`,
+#'   `absolute_index`, `dtype`, `column_name_from`, and `dtype_from`. Indices are
+#'   1-based for R.
+#' @export
+excel_sheet_columns <- function(path,
+                                sheet = 1,
+                                range = NULL,
+                                col_names = TRUE,
+                                header_row = 1L,
+                                skip_rows = NULL,
+                                n_max = Inf,
+                                schema_sample_rows = NULL,
+                                dtype_coercion = c("coerce", "strict"),
+                                dtypes = NULL,
+                                skip_whitespace_tail_rows = FALSE,
+                                whitespace_as_null = FALSE,
+                                columns = NULL,
+                                available = FALSE) {
+  require_namespace("tibble")
+  dtype_coercion <- match.arg(dtype_coercion)
+  path <- validate_source(path)
+  sheet <- validate_sheet(sheet)
+  range <- validate_range(range)
+  columns <- validate_columns(columns)
+  if (!is.na(range) && !is.na(columns[[1L]])) {
+    stop("`range` and `columns` cannot be used together.", call. = FALSE)
+  }
+  col_names <- validate_col_names(col_names)
+  header_row <- validate_optional_row_count(header_row, "header_row", zero_allowed = FALSE)
+  skip_rows <- validate_optional_row_count(skip_rows, "skip_rows", zero_allowed = TRUE)
+  n_max <- validate_n_max(n_max)
+  schema_sample_rows <- validate_optional_row_count(schema_sample_rows, "schema_sample_rows", zero_allowed = FALSE)
+  dtypes <- validate_dtypes(dtypes)
+  skip_whitespace_tail_rows <- validate_flag(skip_whitespace_tail_rows, "skip_whitespace_tail_rows")
+  whitespace_as_null <- validate_flag(whitespace_as_null, "whitespace_as_null")
+  available <- validate_flag(available, "available")
+  if (available) {
+    range <- NA_character_
+    columns <- NA_integer_
+  }
+
+  out <- .excel_sheet_columns(
+    path,
+    zip_limits(),
+    sheet,
+    range,
+    columns,
+    col_names,
+    header_row,
+    skip_rows,
+    n_max,
+    schema_sample_rows,
+    dtype_coercion,
+    dtypes,
+    skip_whitespace_tail_rows,
+    whitespace_as_null,
+    available
+  )
+  column_info_tibble(out)
+}
+
 #' List table names in an Excel workbook
 #'
 #' @param path Path to an Excel workbook, or a raw vector containing workbook
@@ -258,6 +325,66 @@ excel_table_info <- function(path, table = NULL) {
     height = out$height,
     total_height = out$total_height
   )
+}
+
+#' Inspect Excel table column metadata in a workbook
+#'
+#' @inheritParams read_excel_table
+#' @param available If `FALSE`, return metadata for the selected columns. If
+#'   `TRUE`, return metadata for all available columns after applying header and
+#'   dtype options, ignoring `columns`.
+#' @return A tibble with one row per column and columns `name`, `index`,
+#'   `absolute_index`, `dtype`, `column_name_from`, and `dtype_from`. Indices are
+#'   1-based for R.
+#' @export
+excel_table_columns <- function(path,
+                                table,
+                                col_names = TRUE,
+                                header_row = NULL,
+                                skip_rows = NULL,
+                                n_max = Inf,
+                                schema_sample_rows = NULL,
+                                dtype_coercion = c("coerce", "strict"),
+                                dtypes = NULL,
+                                skip_whitespace_tail_rows = FALSE,
+                                whitespace_as_null = FALSE,
+                                columns = NULL,
+                                available = FALSE) {
+  require_namespace("tibble")
+  dtype_coercion <- match.arg(dtype_coercion)
+  path <- validate_source(path)
+  table <- validate_table_name(table, "table")
+  columns <- validate_columns(columns)
+  col_names <- validate_col_names(col_names)
+  header_row <- validate_optional_row_count(header_row, "header_row", zero_allowed = FALSE)
+  skip_rows <- validate_optional_row_count(skip_rows, "skip_rows", zero_allowed = TRUE)
+  n_max <- validate_n_max(n_max)
+  schema_sample_rows <- validate_optional_row_count(schema_sample_rows, "schema_sample_rows", zero_allowed = FALSE)
+  dtypes <- validate_dtypes(dtypes)
+  skip_whitespace_tail_rows <- validate_flag(skip_whitespace_tail_rows, "skip_whitespace_tail_rows")
+  whitespace_as_null <- validate_flag(whitespace_as_null, "whitespace_as_null")
+  available <- validate_flag(available, "available")
+  if (available) {
+    columns <- NA_integer_
+  }
+
+  out <- .excel_table_columns(
+    path,
+    zip_limits(),
+    table,
+    columns,
+    col_names,
+    header_row,
+    skip_rows,
+    n_max,
+    schema_sample_rows,
+    dtype_coercion,
+    dtypes,
+    skip_whitespace_tail_rows,
+    whitespace_as_null,
+    available
+  )
+  column_info_tibble(out)
 }
 
 #' List defined names in an Excel workbook
@@ -368,6 +495,17 @@ arrow_tabular_to_vectors <- function(x) {
   } else {
     vectors
   }
+}
+
+column_info_tibble <- function(out) {
+  tibble::tibble(
+    name = out$name,
+    index = out$index,
+    absolute_index = out$absolute_index,
+    dtype = out$dtype,
+    column_name_from = out$column_name_from,
+    dtype_from = out$dtype_from
+  )
 }
 
 validate_source <- function(path) {

@@ -20,12 +20,20 @@
   check_extendr_result(.Call(wrap__excel_sheet_info, source, zip_limits, sheet))
 }
 
+.excel_sheet_columns <- function(source, zip_limits, sheet, range, columns, col_names, header_row, skip_rows, n_max, schema_sample_rows, dtype_coercion, dtypes, skip_whitespace_tail_rows, whitespace_as_null, available) {
+  check_extendr_result(.Call(wrap__excel_sheet_columns, source, zip_limits, sheet, range, columns, col_names, header_row, skip_rows, n_max, schema_sample_rows, dtype_coercion, dtypes, skip_whitespace_tail_rows, whitespace_as_null, available))
+}
+
 .excel_tables <- function(source, zip_limits, sheet) {
   check_extendr_result(.Call(wrap__excel_tables, source, zip_limits, sheet))
 }
 
 .excel_table_info <- function(source, zip_limits, table) {
   check_extendr_result(.Call(wrap__excel_table_info, source, zip_limits, table))
+}
+
+.excel_table_columns <- function(source, zip_limits, table, columns, col_names, header_row, skip_rows, n_max, schema_sample_rows, dtype_coercion, dtypes, skip_whitespace_tail_rows, whitespace_as_null, available) {
+  check_extendr_result(.Call(wrap__excel_table_columns, source, zip_limits, table, columns, col_names, header_row, skip_rows, n_max, schema_sample_rows, dtype_coercion, dtypes, skip_whitespace_tail_rows, whitespace_as_null, available))
 }
 
 .excel_defined_names <- function(source, zip_limits) {
