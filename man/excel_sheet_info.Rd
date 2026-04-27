@@ -4,10 +4,10 @@
 \alias{excel_sheet_info}
 \title{Inspect sheet metadata in an Excel workbook}
 \usage{
-excel_sheet_info(path, sheet = NULL)
+excel_sheet_info(file, sheet = NULL)
 }
 \arguments{
-\item{path}{Path to an Excel workbook, or a raw vector containing workbook
+\item{file}{Path to an Excel workbook, or a raw vector containing workbook
 bytes.}
 
 \item{sheet}{Optional worksheet to inspect, either as a 1-based sheet index or

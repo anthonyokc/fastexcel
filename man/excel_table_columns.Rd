@@ -5,8 +5,9 @@
 \title{Inspect Excel table column metadata in a workbook}
 \usage{
 excel_table_columns(
-  path,
+  file,
   table,
+  columns = NULL,
   col_names = TRUE,
   header_row = NULL,
   skip_rows = NULL,
@@ -16,15 +17,17 @@ excel_table_columns(
   dtypes = NULL,
   skip_whitespace_tail_rows = FALSE,
   whitespace_as_null = FALSE,
-  columns = NULL,
   available = FALSE
 )
 }
 \arguments{
-\item{path}{Path to an Excel workbook, or a raw vector containing workbook
+\item{file}{Path to an Excel workbook, or a raw vector containing workbook
 bytes.}
 
 \item{table}{Name of the Excel table to read.}
+
+\item{columns}{Optional table columns to select, as a character vector of
+column names or a numeric vector of 1-based column positions.}
 
 \item{col_names}{\code{TRUE} to use the first row as names, \code{FALSE} to generate
 names, or a character vector of explicit names.}
@@ -53,9 +56,6 @@ only whitespace and null values.}
 
 \item{whitespace_as_null}{Whether string cells containing only whitespace are
 treated as missing values.}
-
-\item{columns}{Optional table columns to select, as a character vector of
-column names or a numeric vector of 1-based column positions.}
 
 \item{available}{If \code{FALSE}, return metadata for the selected columns. If
 \code{TRUE}, return metadata for all available columns after applying header and

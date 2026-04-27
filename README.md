@@ -7,7 +7,7 @@ uses [ToucanToco's Rust `fastexcel` crate](https://github.com/ToucanToco/fastexc
 
 - Read Excel worksheets into an `arrow::Table` by default.
 - Convert results to a tibble, data frame, or vectors when needed.
-- Read from a local file path or in-memory workbook bytes.
+- Read from a local file or in-memory workbook bytes.
 - Select sheets by 1-based index or sheet name.
 - Read column ranges such as `"A:A"` and `"A:D"`, or select columns by name
   or position.
@@ -51,31 +51,31 @@ R CMD INSTALL .
 ```r
 library(fastexcel)
 
-path <- system.file("extdata/Pop_Density.xlsx", package = "fastexcel")
+file <- system.file("extdata/Pop_Density.xlsx", package = "fastexcel")
 
-table <- read_excel(path)
+table <- read_excel(file)
 table
 ```
 
 Return explicit Arrow objects:
 
 ```r
-read_excel(path, as = "arrow_table")
-read_excel(path, as = "arrow_record_batch")
-read_excel(path, range = "A:A", as = "arrow_array")
+read_excel(file, as = "arrow_table")
+read_excel(file, as = "arrow_record_batch")
+read_excel(file, range = "A:A", as = "arrow_array")
 ```
 
 Return a base data frame or tibble:
 
 ```r
-read_excel(path, as = "data.frame")
-read_excel(path, as = "tibble")
+read_excel(file, as = "data.frame")
+read_excel(file, as = "tibble")
 ```
 
 Read a single column as a vector:
 
 ```r
-read_excel(path, range = "A:A", as = "vector")
+read_excel(file, range = "A:A", as = "vector")
 ```
 
 `as = "arrow_array"` returns an Arrow array. `as = "vector"` returns a base R
@@ -85,33 +85,33 @@ output.
 Select a sheet by index or name:
 
 ```r
-read_excel(path, sheet = 1)
-read_excel(path, sheet = "Sheet1")
+read_excel(file, sheet = 1)
+read_excel(file, sheet = "Sheet1")
 ```
 
 Select columns by name or 1-based position:
 
 ```r
-read_excel(path, columns = c("city", "Year"))
-read_excel(path, columns = c(1, 2))
+read_excel(file, columns = c("city", "Year"))
+read_excel(file, columns = c(1, 2))
 ```
 
 Inspect workbook metadata:
 
 ```r
-excel_sheets(path)
-excel_sheet_info(path)
-excel_sheet_columns(path)
-excel_tables(path)
-excel_table_info(path)
-excel_table_columns(path, "Table1")
-excel_defined_names(path)
+excel_sheets(file)
+excel_sheet_info(file)
+excel_sheet_columns(file)
+excel_tables(file)
+excel_table_info(file)
+excel_table_columns(file, "Table1")
+excel_defined_names(file)
 ```
 
 Read a named Excel table:
 
 ```r
-read_excel_table(path, "Table1", as = "data.frame")
+read_excel_table(file, "Table1", as = "data.frame")
 ```
 
 ## Security and Resource Limits
@@ -168,7 +168,7 @@ Current limitations:
 Read workbook bytes, such as the raw vector returned by cloud storage clients:
 
 ```r
-bytes <- readBin(path, what = "raw", n = file.info(path)$size)
+bytes <- readBin(file, what = "raw", n = file.info(file)$size)
 read_excel(bytes, as = "data.frame")
 ```
 
@@ -185,11 +185,12 @@ read_excel(bytes, as = "data.frame")
 
 ```r
 read_excel(
-  path,
+  file,
   sheet = 1,
   range = NULL,
+  columns = NULL,
   col_names = TRUE,
-  header_row = 1L,
+  header_row = NULL,
   skip_rows = NULL,
   n_max = Inf,
   schema_sample_rows = NULL,
@@ -197,12 +198,11 @@ read_excel(
   dtypes = NULL,
   skip_whitespace_tail_rows = FALSE,
   whitespace_as_null = FALSE,
-  as = c("arrow_table", "arrow_record_batch", "arrow_array", "tibble", "data.frame", "vector"),
-  columns = NULL
+  as = c("arrow_table", "arrow_record_batch", "arrow_array", "tibble", "data.frame", "vector")
 )
 ```
 
-- `path`: path to an Excel workbook, or a raw vector containing workbook bytes.
+- `file`: path to an Excel workbook, or a raw vector containing workbook bytes.
 - `sheet`: 1-based sheet index or sheet name.
 - `range`: optional Excel-style range. The current implementation supports
   column selectors such as `"A:A"` and `"A:D"`.
@@ -210,7 +210,8 @@ read_excel(
   1-based column positions. Cannot be combined with `range`.
 - `col_names`: `TRUE` to use the first row as names, `FALSE` to generate names,
   or a character vector of explicit names.
-- `header_row`: 1-based row containing column names when `col_names = TRUE`.
+- `header_row`: 1-based row containing column names when `col_names = TRUE`,
+  or `NULL` to use the upstream first non-empty row behavior.
 - `skip_rows`: number of rows to skip after the header row.
 - `n_max`: maximum number of data rows to read.
 - `schema_sample_rows`: number of rows to sample for schema inference.
@@ -225,19 +226,19 @@ read_excel(
 
 ### Metadata Helpers
 
-- `excel_sheets(path)`: returns sheet names.
-- `excel_sheet_info(path, sheet = NULL)`: returns a tibble of sheet names,
+- `excel_sheets(file)`: returns sheet names.
+- `excel_sheet_info(file, sheet = NULL)`: returns a tibble of sheet names,
   dimensions, and visibility metadata, optionally filtered by sheet index or
   name.
-- `excel_sheet_columns(path, sheet = 1, ...)`: returns sheet column metadata for
+- `excel_sheet_columns(file, sheet = 1, ...)`: returns sheet column metadata for
   selected columns, or all available columns with `available = TRUE`.
-- `excel_tables(path, sheet = NULL)`: returns table names, optionally filtered by
+- `excel_tables(file, sheet = NULL)`: returns table names, optionally filtered by
   sheet name.
-- `excel_table_info(path, table = NULL)`: returns table names, parent sheet
+- `excel_table_info(file, table = NULL)`: returns table names, parent sheet
   names, and dimensions, optionally filtered by table name.
-- `excel_table_columns(path, table, ...)`: returns table column metadata for
+- `excel_table_columns(file, table, ...)`: returns table column metadata for
   selected columns, or all available columns with `available = TRUE`.
-- `excel_defined_names(path)`: returns defined-name metadata as a data frame.
+- `excel_defined_names(file)`: returns defined-name metadata as a tibble.
 
 ### Error Classes
 
@@ -252,11 +253,11 @@ Legend: ✅ implemented, ◐ partially implemented, ❌ not implemented.
 
 | Original `fastexcel` feature | Current R package | Status |
 |---|---:|---:|
-| Open Excel workbook from file path | `read_excel(path)` | ✅ |
+| Open Excel workbook from file path | `read_excel(file)` | ✅ |
 | Open workbook from bytes | `read_excel(raw_bytes)` | ✅ |
-| List sheet names | `excel_sheets(path)` or `excel_sheets(raw_bytes)` | ✅ |
-| Load sheet by index | `read_excel(path, sheet = 1)` using 1-based R index | ✅ |
-| Load sheet by name | `read_excel(path, sheet = "Sheet1")` | ✅ |
+| List sheet names | `excel_sheets(file)` or `excel_sheets(raw_bytes)` | ✅ |
+| Load sheet by index | `read_excel(file, sheet = 1)` using 1-based R index | ✅ |
+| Load sheet by name | `read_excel(file, sheet = "Sheet1")` | ✅ |
 | Return Arrow `Table` | `read_excel(..., as = "arrow_table")` default | ✅ |
 | Return Arrow `RecordBatch` | `read_excel(..., as = "arrow_record_batch")` | ✅ |
 | Return Arrow `Array` | `read_excel(..., range = "A:A", as = "arrow_array")` | ✅ |
@@ -268,11 +269,11 @@ Legend: ✅ implemented, ◐ partially implemented, ❌ not implemented.
 | No header row / generated names | `col_names = FALSE` | ✅ |
 | Override column names | `col_names = c(...)` | ✅ |
 | Limit rows | `n_max` maps to upstream `n_rows` | ✅ |
-| Select columns by Excel range/string | `range`, documented for `A:A`, `A:D`; Rust path also delegates to upstream parser | ◐ |
-| List table names | `excel_tables(path)` or `excel_tables(raw_bytes)` | ✅ |
-| Filter table names by sheet name | `excel_tables(path, sheet = "Sheet1")` | ✅ |
-| Inspect table metadata | `excel_table_info(path)` or `excel_table_info(raw_bytes)` | ✅ |
-| List defined names / named ranges | `excel_defined_names(path)` or `excel_defined_names(raw_bytes)` | ✅ |
+| Select columns by Excel range/string | `range`, documented for `A:A`, `A:D`; Rust bridge also delegates to upstream parser | ◐ |
+| List table names | `excel_tables(file)` or `excel_tables(raw_bytes)` | ✅ |
+| Filter table names by sheet name | `excel_tables(file, sheet = "Sheet1")` | ✅ |
+| Inspect table metadata | `excel_table_info(file)` or `excel_table_info(raw_bytes)` | ✅ |
+| List defined names / named ranges | `excel_defined_names(file)` or `excel_defined_names(raw_bytes)` | ✅ |
 | Primitive dtype conversion | bool/string/int/float/date/datetime/duration handled in Rust bridge | ✅ |
 | Supported workbook formats from upstream `fastexcel`/`calamine` | Uses upstream `fastexcel::read_excel(path)` | ✅ |
 | Arbitrary `header_row` index | `header_row`, using 1-based R row numbers | ✅ |
@@ -286,11 +287,11 @@ Legend: ✅ implemented, ◐ partially implemented, ❌ not implemented.
 | `whitespace_as_null` | `whitespace_as_null` | ✅ |
 | Lazy `ExcelReader` object | R API opens internally per call | ❌ |
 | Lazy `ExcelSheet` object | Not exposed | ❌ |
-| `ExcelSheet` metadata: name, width, height, total height, visibility | `excel_sheet_info(path)` or `excel_sheet_info(raw_bytes)` | ✅ |
-| Sheet `selected_columns`, `available_columns`, `specified_dtypes` | `excel_sheet_columns(path, ...)` exposes selected/available columns and dtype provenance | ✅ |
+| `ExcelSheet` metadata: name, width, height, total height, visibility | `excel_sheet_info(file)` or `excel_sheet_info(raw_bytes)` | ✅ |
+| Sheet `selected_columns`, `available_columns`, `specified_dtypes` | `excel_sheet_columns(file, ...)` exposes selected/available columns and dtype provenance | ✅ |
 | `to_arrow_with_errors` / cell parse error reporting | Not exposed | ❌ |
-| `load_table` | `read_excel_table(path, "Table1")` | ✅ |
-| `ExcelTable` object/metadata | `excel_table_info(path)` exposes table metadata; lazy table objects are not exposed | ◐ |
+| `load_table` | `read_excel_table(file, "Table1")` | ✅ |
+| `ExcelTable` object/metadata | `excel_table_info(file)` exposes table metadata; lazy table objects are not exposed | ◐ |
 | Table-to-Arrow/dataframe conversion | `read_excel_table(..., as = "arrow_table")`, `"data.frame"`, `"tibble"`, or `"vector"` | ✅ |
 | `ColumnInfo` metadata | `excel_sheet_columns()` and `excel_table_columns()` expose name, index, dtype, and provenance | ✅ |
 | Typed exception classes | R errors inherit from `fastexcel_error` with validation, resource-limit, parse, and dependency subclasses | ✅ |

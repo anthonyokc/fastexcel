@@ -2,16 +2,15 @@
 \alias{read_excel}
 \title{Read an Excel sheet}
 \usage{
-read_excel(path, sheet = 1, range = NULL, col_names = TRUE,
-  header_row = 1L, skip_rows = NULL, n_max = Inf,
+read_excel(file, sheet = 1, range = NULL, columns = NULL,
+  col_names = TRUE, header_row = NULL, skip_rows = NULL, n_max = Inf,
   schema_sample_rows = NULL, dtype_coercion = c("coerce", "strict"),
   dtypes = NULL, skip_whitespace_tail_rows = FALSE,
   whitespace_as_null = FALSE,
-  as = c("arrow_table", "arrow_record_batch", "arrow_array", "tibble", "data.frame", "vector"),
-  columns = NULL)
+  as = c("arrow_table", "arrow_record_batch", "arrow_array", "tibble", "data.frame", "vector"))
 }
 \arguments{
-\item{path}{Path to an Excel workbook, or a raw vector containing workbook bytes.}
+\item{file}{Path to an Excel workbook, or a raw vector containing workbook bytes.}
 \item{sheet}{Worksheet to read, either as a 1-based sheet index or a sheet name.}
 \item{range}{Optional Excel-style column range, such as \code{"A:A"} for one column or \code{"A:D"} for multiple columns.}
 \item{columns}{Optional columns to select, as a character vector of column names or a numeric vector of 1-based column positions. Cannot be combined with \code{range}.}
@@ -32,12 +31,12 @@ read_excel(path, sheet = 1, range = NULL, col_names = TRUE,
 All package errors inherit from \code{fastexcel_error}. More specific subclasses are used where possible: \code{fastexcel_validation_error}, \code{fastexcel_resource_limit_error}, \code{fastexcel_parse_error}, and \code{fastexcel_dependency_error}.
 }
 \examples{
-path <- system.file("extdata/Pop_Density.xlsx", package = "fastexcel")
-if (nzchar(path)) {
-  read_excel(path)
-  read_excel(path, as = "arrow_record_batch")
-  read_excel(path, range = "A:A", as = "arrow_array")
-  read_excel(path, as = "data.frame")
-  read_excel(path, range = "A:A", as = "vector")
+file <- system.file("extdata/Pop_Density.xlsx", package = "fastexcel")
+if (nzchar(file)) {
+  read_excel(file)
+  read_excel(file, as = "arrow_record_batch")
+  read_excel(file, range = "A:A", as = "arrow_array")
+  read_excel(file, as = "data.frame")
+  read_excel(file, range = "A:A", as = "vector")
 }
 }

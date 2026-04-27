@@ -5,11 +5,12 @@
 \title{Inspect sheet column metadata in an Excel workbook}
 \usage{
 excel_sheet_columns(
-  path,
+  file,
   sheet = 1,
   range = NULL,
+  columns = NULL,
   col_names = TRUE,
-  header_row = 1L,
+  header_row = NULL,
   skip_rows = NULL,
   n_max = Inf,
   schema_sample_rows = NULL,
@@ -17,12 +18,11 @@ excel_sheet_columns(
   dtypes = NULL,
   skip_whitespace_tail_rows = FALSE,
   whitespace_as_null = FALSE,
-  columns = NULL,
   available = FALSE
 )
 }
 \arguments{
-\item{path}{Path to an Excel workbook, or a raw vector containing workbook
+\item{file}{Path to an Excel workbook, or a raw vector containing workbook
 bytes.}
 
 \item{sheet}{Worksheet to read, either as a 1-based sheet index or a sheet
@@ -30,6 +30,10 @@ name.}
 
 \item{range}{Optional Excel-style column range, such as \code{"A:A"} for one
 column or \code{"A:D"} for multiple columns.}
+
+\item{columns}{Optional columns to select, as a character vector of column
+names or a numeric vector of 1-based column positions. Cannot be combined
+with \code{range}.}
 
 \item{col_names}{\code{TRUE} to use the first row as names, \code{FALSE} to generate
 names, or a character vector of explicit names.}
@@ -58,10 +62,6 @@ only whitespace and null values.}
 
 \item{whitespace_as_null}{Whether string cells containing only whitespace are
 treated as missing values.}
-
-\item{columns}{Optional columns to select, as a character vector of column
-names or a numeric vector of 1-based column positions. Cannot be combined
-with \code{range}.}
 
 \item{available}{If \code{FALSE}, return metadata for the selected columns. If
 \code{TRUE}, return metadata for all available columns after applying header and

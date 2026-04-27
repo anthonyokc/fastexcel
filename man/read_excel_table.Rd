@@ -5,8 +5,9 @@
 \title{Read an Excel table}
 \usage{
 read_excel_table(
-  path,
+  file,
   table,
+  columns = NULL,
   col_names = TRUE,
   header_row = NULL,
   skip_rows = NULL,
@@ -17,15 +18,17 @@ read_excel_table(
   skip_whitespace_tail_rows = FALSE,
   whitespace_as_null = FALSE,
   as = c("arrow_table", "arrow_record_batch", "arrow_array", "tibble", "data.frame",
-    "vector"),
-  columns = NULL
+    "vector")
 )
 }
 \arguments{
-\item{path}{Path to an Excel workbook, or a raw vector containing workbook
+\item{file}{Path to an Excel workbook, or a raw vector containing workbook
 bytes.}
 
 \item{table}{Name of the Excel table to read.}
+
+\item{columns}{Optional table columns to select, as a character vector of
+column names or a numeric vector of 1-based column positions.}
 
 \item{col_names}{\code{TRUE} to use the first row as names, \code{FALSE} to generate
 names, or a character vector of explicit names.}
@@ -58,9 +61,6 @@ treated as missing values.}
 \item{as}{Type of object to return: \code{"arrow_table"},
 \code{"arrow_record_batch"}, \code{"arrow_array"}, \code{"tibble"}, \code{"data.frame"}, or
 \code{"vector"}.}
-
-\item{columns}{Optional table columns to select, as a character vector of
-column names or a numeric vector of 1-based column positions.}
 }
 \value{
 The same output types as \code{\link[=read_excel]{read_excel()}}.

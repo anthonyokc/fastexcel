@@ -3,7 +3,7 @@
 #' Reads a worksheet from an Excel workbook and returns an Arrow `Table` by
 #' default.
 #'
-#' @param path Path to an Excel workbook, or a raw vector containing workbook
+#' @param file Path to an Excel workbook, or a raw vector containing workbook
 #'   bytes.
 #' @param sheet Worksheet to read, either as a 1-based sheet index or a sheet
 #'   name.
@@ -51,20 +51,21 @@
 #' `fastexcel_dependency_error`.
 #'
 #' @examples
-#' path <- system.file("extdata/Pop_Density.xlsx", package = "fastexcel")
-#' if (nzchar(path)) {
-#'   read_excel(path)
-#'   read_excel(path, as = "arrow_record_batch")
-#'   read_excel(path, range = "A:A", as = "arrow_array")
-#'   read_excel(path, as = "data.frame")
-#'   read_excel(path, range = "A:A", as = "vector")
+#' file <- system.file("extdata/Pop_Density.xlsx", package = "fastexcel")
+#' if (nzchar(file)) {
+#'   read_excel(file)
+#'   read_excel(file, as = "arrow_record_batch")
+#'   read_excel(file, range = "A:A", as = "arrow_array")
+#'   read_excel(file, as = "data.frame")
+#'   read_excel(file, range = "A:A", as = "vector")
 #' }
 #' @export
-read_excel <- function(path,
+read_excel <- function(file,
                        sheet = 1,
                        range = NULL,
+                       columns = NULL,
                        col_names = TRUE,
-                       header_row = 1L,
+                       header_row = NULL,
                        skip_rows = NULL,
                        n_max = Inf,
                        schema_sample_rows = NULL,
@@ -72,11 +73,10 @@ read_excel <- function(path,
                        dtypes = NULL,
                        skip_whitespace_tail_rows = FALSE,
                        whitespace_as_null = FALSE,
-                       as = c("arrow_table", "arrow_record_batch", "arrow_array", "tibble", "data.frame", "vector"),
-                       columns = NULL) {
+                       as = c("arrow_table", "arrow_record_batch", "arrow_array", "tibble", "data.frame", "vector")) {
   as <- match.arg(as)
   dtype_coercion <- match.arg(dtype_coercion)
-  path <- validate_source(path)
+  file <- validate_source(file)
   sheet <- validate_sheet(sheet)
   range <- validate_range(range)
   columns <- validate_columns(columns)
@@ -93,7 +93,7 @@ read_excel <- function(path,
   whitespace_as_null <- validate_flag(whitespace_as_null, "whitespace_as_null")
 
   arrow <- read_excel_arrow_object(
-    path = path,
+    source = file,
     sheet = sheet,
     range = range,
     columns = columns,
@@ -133,8 +133,9 @@ read_excel <- function(path,
 #'   column names or a numeric vector of 1-based column positions.
 #' @return The same output types as [read_excel()].
 #' @export
-read_excel_table <- function(path,
+read_excel_table <- function(file,
                              table,
+                             columns = NULL,
                              col_names = TRUE,
                              header_row = NULL,
                              skip_rows = NULL,
@@ -144,11 +145,10 @@ read_excel_table <- function(path,
                              dtypes = NULL,
                              skip_whitespace_tail_rows = FALSE,
                              whitespace_as_null = FALSE,
-                             as = c("arrow_table", "arrow_record_batch", "arrow_array", "tibble", "data.frame", "vector"),
-                             columns = NULL) {
+                             as = c("arrow_table", "arrow_record_batch", "arrow_array", "tibble", "data.frame", "vector")) {
   as <- match.arg(as)
   dtype_coercion <- match.arg(dtype_coercion)
-  path <- validate_source(path)
+  file <- validate_source(file)
   table <- validate_table_name(table, "table")
   columns <- validate_columns(columns)
   col_names <- validate_col_names(col_names)
@@ -161,7 +161,7 @@ read_excel_table <- function(path,
   whitespace_as_null <- validate_flag(whitespace_as_null, "whitespace_as_null")
 
   arrow <- read_excel_table_arrow_object(
-    path = path,
+    source = file,
     table = table,
     columns = columns,
     col_names = col_names,
@@ -191,30 +191,30 @@ read_excel_table <- function(path,
 
 #' List sheet names in an Excel workbook
 #'
-#' @param path Path to an Excel workbook, or a raw vector containing workbook
+#' @param file Path to an Excel workbook, or a raw vector containing workbook
 #'   bytes.
 #' @return A character vector of sheet names.
 #' @export
-excel_sheets <- function(path) {
-  .excel_sheets(validate_source(path), zip_limits())
+excel_sheets <- function(file) {
+  .excel_sheets(validate_source(file), zip_limits())
 }
 
 #' Inspect sheet metadata in an Excel workbook
 #'
-#' @param path Path to an Excel workbook, or a raw vector containing workbook
+#' @param file Path to an Excel workbook, or a raw vector containing workbook
 #'   bytes.
 #' @param sheet Optional worksheet to inspect, either as a 1-based sheet index or
 #'   a sheet name. When `NULL`, metadata is returned for every sheet.
 #' @return A tibble with one row per sheet and columns `name`, `width`,
 #'   `height`, `total_height`, and `visibility`.
 #' @export
-excel_sheet_info <- function(path, sheet = NULL) {
+excel_sheet_info <- function(file, sheet = NULL) {
   require_namespace("tibble")
-  path <- validate_source(path)
+  file <- validate_source(file)
   if (!is.null(sheet)) {
     sheet <- validate_sheet(sheet)
   }
-  out <- .excel_sheet_info(path, zip_limits(), sheet)
+  out <- .excel_sheet_info(file, zip_limits(), sheet)
   tibble::tibble(
     name = out$name,
     width = out$width,
@@ -234,11 +234,12 @@ excel_sheet_info <- function(path, sheet = NULL) {
 #'   `absolute_index`, `dtype`, `column_name_from`, and `dtype_from`. Indices are
 #'   1-based for R.
 #' @export
-excel_sheet_columns <- function(path,
+excel_sheet_columns <- function(file,
                                 sheet = 1,
                                 range = NULL,
+                                columns = NULL,
                                 col_names = TRUE,
-                                header_row = 1L,
+                                header_row = NULL,
                                 skip_rows = NULL,
                                 n_max = Inf,
                                 schema_sample_rows = NULL,
@@ -246,11 +247,10 @@ excel_sheet_columns <- function(path,
                                 dtypes = NULL,
                                 skip_whitespace_tail_rows = FALSE,
                                 whitespace_as_null = FALSE,
-                                columns = NULL,
                                 available = FALSE) {
   require_namespace("tibble")
   dtype_coercion <- match.arg(dtype_coercion)
-  path <- validate_source(path)
+  file <- validate_source(file)
   sheet <- validate_sheet(sheet)
   range <- validate_range(range)
   columns <- validate_columns(columns)
@@ -272,7 +272,7 @@ excel_sheet_columns <- function(path,
   }
 
   out <- .excel_sheet_columns(
-    path,
+    file,
     zip_limits(),
     sheet,
     range,
@@ -293,38 +293,38 @@ excel_sheet_columns <- function(path,
 
 #' List table names in an Excel workbook
 #'
-#' @param path Path to an Excel workbook, or a raw vector containing workbook
+#' @param file Path to an Excel workbook, or a raw vector containing workbook
 #'   bytes.
 #' @param sheet Optional sheet name used to limit results to one worksheet.
 #' @return A character vector of table names.
 #' @export
-excel_tables <- function(path, sheet = NULL) {
-  path <- validate_source(path)
+excel_tables <- function(file, sheet = NULL) {
+  file <- validate_source(file)
   if (is.null(sheet)) {
     sheet <- NA_character_
   } else if (!is.character(sheet) || length(sheet) != 1L || is.na(sheet)) {
     stop_fastexcel("`sheet` must be NULL or a single sheet name.", class = "fastexcel_validation_error")
   }
-  .excel_tables(path, zip_limits(), sheet)
+  .excel_tables(file, zip_limits(), sheet)
 }
 
 #' Inspect Excel table metadata in a workbook
 #'
-#' @param path Path to an Excel workbook, or a raw vector containing workbook
+#' @param file Path to an Excel workbook, or a raw vector containing workbook
 #'   bytes.
 #' @param table Optional table name used to limit results to one table.
 #' @return A tibble with one row per table and columns `name`, `sheet_name`,
 #'   `width`, `height`, and `total_height`.
 #' @export
-excel_table_info <- function(path, table = NULL) {
+excel_table_info <- function(file, table = NULL) {
   require_namespace("tibble")
-  path <- validate_source(path)
+  file <- validate_source(file)
   if (is.null(table)) {
     table <- NA_character_
   } else {
     table <- validate_table_name(table, "table")
   }
-  out <- .excel_table_info(path, zip_limits(), table)
+  out <- .excel_table_info(file, zip_limits(), table)
   tibble::tibble(
     name = out$name,
     sheet_name = out$sheet_name,
@@ -344,8 +344,9 @@ excel_table_info <- function(path, table = NULL) {
 #'   `absolute_index`, `dtype`, `column_name_from`, and `dtype_from`. Indices are
 #'   1-based for R.
 #' @export
-excel_table_columns <- function(path,
+excel_table_columns <- function(file,
                                 table,
+                                columns = NULL,
                                 col_names = TRUE,
                                 header_row = NULL,
                                 skip_rows = NULL,
@@ -355,11 +356,10 @@ excel_table_columns <- function(path,
                                 dtypes = NULL,
                                 skip_whitespace_tail_rows = FALSE,
                                 whitespace_as_null = FALSE,
-                                columns = NULL,
                                 available = FALSE) {
   require_namespace("tibble")
   dtype_coercion <- match.arg(dtype_coercion)
-  path <- validate_source(path)
+  file <- validate_source(file)
   table <- validate_table_name(table, "table")
   columns <- validate_columns(columns)
   col_names <- validate_col_names(col_names)
@@ -376,7 +376,7 @@ excel_table_columns <- function(path,
   }
 
   out <- .excel_table_columns(
-    path,
+    file,
     zip_limits(),
     table,
     columns,
@@ -396,21 +396,20 @@ excel_table_columns <- function(path,
 
 #' List defined names in an Excel workbook
 #'
-#' @param path Path to an Excel workbook, or a raw vector containing workbook
+#' @param file Path to an Excel workbook, or a raw vector containing workbook
 #'   bytes.
-#' @return A data frame with defined-name metadata.
+#' @return A tibble with defined-name metadata.
 #' @export
-excel_defined_names <- function(path) {
-  out <- .excel_defined_names(validate_source(path), zip_limits())
-  data.frame(
+excel_defined_names <- function(file) {
+  require_namespace("tibble")
+  out <- .excel_defined_names(validate_source(file), zip_limits())
+  tibble::tibble(
     name = out$name,
-    formula = out$formula,
-    sheet_name = out$sheet_name,
-    stringsAsFactors = FALSE
+    formula = out$formula
   )
 }
 
-read_excel_arrow_object <- function(path,
+read_excel_arrow_object <- function(source,
                                     sheet,
                                     range,
                                     columns,
@@ -428,7 +427,7 @@ read_excel_arrow_object <- function(path,
   array <- utils::getFromNamespace("allocate_arrow_array", "arrow")()
   schema <- utils::getFromNamespace("allocate_arrow_schema", "arrow")()
   .read_excel_arrow(
-    path,
+    source,
     zip_limits(),
     sheet,
     range,
@@ -453,7 +452,7 @@ read_excel_arrow_object <- function(path,
   }
 }
 
-read_excel_table_arrow_object <- function(path,
+read_excel_table_arrow_object <- function(source,
                                           table,
                                           columns,
                                           col_names,
@@ -470,7 +469,7 @@ read_excel_table_arrow_object <- function(path,
   array <- utils::getFromNamespace("allocate_arrow_array", "arrow")()
   schema <- utils::getFromNamespace("allocate_arrow_schema", "arrow")()
   .read_excel_table_arrow(
-    path,
+    source,
     zip_limits(),
     table,
     columns,
@@ -515,20 +514,20 @@ column_info_tibble <- function(out) {
   )
 }
 
-validate_source <- function(path) {
+validate_source <- function(file) {
   max_size <- max_workbook_size()
-  if (is.raw(path) && length(path) > 0L) {
-    check_workbook_size(length(path), max_size)
-    return(path)
+  if (is.raw(file) && length(file) > 0L) {
+    check_workbook_size(length(file), max_size)
+    return(file)
   }
-  if (!is.character(path) || length(path) != 1L || is.na(path) || !nzchar(path)) {
-    stop_fastexcel("`path` must be a single non-empty string or a non-empty raw vector.", class = "fastexcel_validation_error")
+  if (!is.character(file) || length(file) != 1L || is.na(file) || !nzchar(file)) {
+    stop_fastexcel("`file` must be a single non-empty string or a non-empty raw vector.", class = "fastexcel_validation_error")
   }
-  info <- file.info(path)
+  info <- file.info(file)
   if (!is.na(info$size)) {
     check_workbook_size(info$size, max_size)
   }
-  path
+  file
 }
 
 max_workbook_size <- function() {
@@ -571,7 +570,7 @@ validate_sheet <- function(sheet) {
   if (is.character(sheet) && length(sheet) == 1L && !is.na(sheet) && nzchar(sheet)) {
     return(sheet)
   }
-  if (is.numeric(sheet) && length(sheet) == 1L && is.finite(sheet) && sheet == as.integer(sheet) && sheet >= 1L) {
+  if (is.numeric(sheet) && length(sheet) == 1L && is_valid_integerish(sheet, minimum = 1L)) {
     return(as.integer(sheet))
   }
   stop_fastexcel("`sheet` must be a single positive integer or non-empty string.", class = "fastexcel_validation_error")
@@ -594,7 +593,7 @@ validate_columns <- function(columns) {
   if (is.character(columns) && length(columns) > 0L && !anyNA(columns) && all(nzchar(columns))) {
     return(columns)
   }
-  if (is.numeric(columns) && length(columns) > 0L && all(is.finite(columns)) && all(columns == floor(columns)) && all(columns >= 1)) {
+  if (is.numeric(columns) && length(columns) > 0L && all(is_valid_integerish(columns, minimum = 1L))) {
     return(as.integer(columns))
   }
   stop_fastexcel("`columns` must be NULL, a non-empty character vector, or a non-empty numeric vector of positive integer positions.", class = "fastexcel_validation_error")
@@ -619,10 +618,13 @@ validate_col_names <- function(col_names) {
 
 validate_n_max <- function(n_max) {
   if (!is.numeric(n_max) || length(n_max) != 1L || is.na(n_max) || n_max < 0) {
-    stop_fastexcel("`n_max` must be a single non-negative number or Inf.", class = "fastexcel_validation_error")
+    stop_fastexcel("`n_max` must be a single non-negative integer or Inf.", class = "fastexcel_validation_error")
   }
   if (is.infinite(n_max)) {
     return(NA_integer_)
+  }
+  if (!is_valid_integerish(n_max, minimum = 0L)) {
+    stop_fastexcel("`n_max` must be a single non-negative integer or Inf.", class = "fastexcel_validation_error")
   }
   as.integer(n_max)
 }
@@ -634,11 +636,15 @@ validate_optional_row_count <- function(value, name, zero_allowed) {
   if (!is.numeric(value) || length(value) != 1L || is.na(value) || !is.finite(value)) {
     stop_fastexcel("`", name, "` must be NULL or a single ", if (zero_allowed) "non-negative" else "positive", " integer.", class = "fastexcel_validation_error")
   }
-  int_value <- as.integer(value)
-  if (value != int_value || int_value < as.integer(!zero_allowed)) {
+  minimum <- as.integer(!zero_allowed)
+  if (!is_valid_integerish(value, minimum = minimum)) {
     stop_fastexcel("`", name, "` must be NULL or a single ", if (zero_allowed) "non-negative" else "positive", " integer.", class = "fastexcel_validation_error")
   }
-  int_value
+  as.integer(value)
+}
+
+is_valid_integerish <- function(value, minimum) {
+  is.finite(value) & value == floor(value) & value >= minimum & value <= .Machine$integer.max
 }
 
 validate_dtypes <- function(dtypes) {

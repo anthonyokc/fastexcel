@@ -574,12 +574,9 @@ fn excel_defined_names(source: Robj, zip_limits: Robj) -> Result<List> {
 
     let name_values: Vec<String> = names.iter().map(|item| item.name.to_string()).collect();
     let formula_values: Vec<String> = names.iter().map(|item| item.formula.to_string()).collect();
-    let sheet_values: Vec<String> = std::iter::repeat_n(String::new(), names.len()).collect();
-
     Ok(list!(
         name = name_values,
-        formula = formula_values,
-        sheet_name = sheet_values
+        formula = formula_values
     ))
 }
 

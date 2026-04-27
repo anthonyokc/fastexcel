@@ -239,7 +239,7 @@ test_that("metadata helpers accept workbook bytes", {
   expect_equal(excel_sheets(bytes), "Sheet1")
   expect_s3_class(excel_sheet_info(bytes), "tbl_df")
   expect_type(excel_tables(bytes), "character")
-  expect_s3_class(excel_defined_names(bytes), "data.frame")
+  expect_s3_class(excel_defined_names(bytes), "tbl_df")
 })
 
 test_that("table metadata and table loading work", {
@@ -350,7 +350,9 @@ test_that("supporting workbook metadata functions work", {
   expect_equal(excel_sheet_info(fixture(), sheet = 1), info)
   expect_equal(excel_sheet_info(fixture(), sheet = "Sheet1"), info)
   expect_type(excel_tables(fixture()), "character")
-  expect_s3_class(excel_defined_names(fixture()), "data.frame")
+  defined_names <- excel_defined_names(fixture())
+  expect_s3_class(defined_names, "tbl_df")
+  expect_equal(names(defined_names), c("name", "formula"))
 })
 
 test_that("errors are clear", {
@@ -364,4 +366,9 @@ test_that("errors are clear", {
   expect_error(read_excel(fixture(), schema_sample_rows = 0), "schema_sample_rows")
   expect_error(read_excel(fixture(), dtype_coercion = "invalid"), "one of")
   expect_error(read_excel(fixture(), dtypes = "invalid"), "Unsupported dtype")
+  expect_error(read_excel(fixture(), n_max = 1.5), "n_max")
+  expect_error(read_excel(fixture(), n_max = .Machine$integer.max + 1), "n_max")
+  expect_error(read_excel(fixture(), columns = .Machine$integer.max + 1), "columns")
+  expect_error(read_excel(fixture(), sheet = .Machine$integer.max + 1), "sheet")
+  expect_error(read_excel(fixture(), header_row = .Machine$integer.max + 1), "header_row")
 })

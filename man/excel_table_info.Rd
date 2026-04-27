@@ -4,10 +4,10 @@
 \alias{excel_table_info}
 \title{Inspect Excel table metadata in a workbook}
 \usage{
-excel_table_info(path, table = NULL)
+excel_table_info(file, table = NULL)
 }
 \arguments{
-\item{path}{Path to an Excel workbook, or a raw vector containing workbook
+\item{file}{Path to an Excel workbook, or a raw vector containing workbook
 bytes.}
 
 \item{table}{Optional table name used to limit results to one table.}
