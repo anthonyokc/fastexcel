@@ -228,6 +228,8 @@ Legend: ✅ implemented, ◐ partially implemented, ❌ not implemented.
 | Return Arrow `Table` | `read_excel(..., as = "arrow_table")` default | ✅ |
 | Return Arrow `RecordBatch` | `read_excel(..., as = "arrow_record_batch")` | ✅ |
 | Return Arrow `Array` | `read_excel(..., range = "A:A", as = "arrow_array")` | ✅ |
+| Arrow C Data Interface handoff | Rust exports Arrow arrays/record batches; R imports them with Arrow's C Data Interface | ✅ |
+| End-to-end zero-copy Arrow buffers | Avoids the R-vector boundary for `read_excel()` outputs; Rust array construction may still copy from upstream series data | ◐ |
 | Convert to data frame-like output | `as = "data.frame"`, `as = "tibble"` | ✅ |
 | Return vectors/list of vectors | `as = "vector"` | ✅ |
 | Use first row as column names | `col_names = TRUE` | ✅ |
