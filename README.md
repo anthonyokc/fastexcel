@@ -288,8 +288,13 @@ package installation process.
 
 This R package is licensed under MIT. See `LICENSE` for details.
 
-This package links to ToucanToco's Rust `fastexcel` crate, which is also
-licensed under MIT. `fastexcel` provides nearly all of this package's Excel
-parsing functionality, and this package gratefully acknowledges and thanks its
-authors for their work. See [`inst/NOTICE`](inst/NOTICE) for upstream copyright
-and license details.
+This package links to several upstream Rust crates. In particular, it uses
+ToucanToco's Rust `fastexcel` crate, which is licensed under MIT and provides
+nearly all of this package's Excel parsing functionality. `fastexcel` delegates
+workbook parsing to `calamine`, also licensed under MIT.
+
+The Rust bridge also links to Apache Arrow Rust crates (`arrow-array` and
+`arrow-schema`, Apache-2.0), `chrono` (MIT OR Apache-2.0), `extendr-api` (MIT),
+and `zip` (MIT). This package gratefully acknowledges and thanks these upstream
+authors for their work. See [`inst/NOTICE`](inst/NOTICE) for upstream copyright,
+repository, and license details.

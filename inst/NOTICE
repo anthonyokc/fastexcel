@@ -1,13 +1,38 @@
-This package links to the upstream Rust crate fastexcel.
-This package depends almost entirely on fastexcel for Excel parsing, and the
-package author gratefully acknowledges and thanks the fastexcel authors for
-their work.
+This package links to upstream Rust crates. The package depends almost entirely
+on fastexcel for Excel parsing, and fastexcel delegates workbook parsing to
+calamine. The package author gratefully acknowledges and thanks the upstream
+authors for their work.
 
 fastexcel
 Copyright (c) 2024 ToucanToco
 License: MIT
 Repository: https://github.com/ToucanToco/fastexcel
 License text: https://github.com/ToucanToco/fastexcel/blob/main/LICENSE
+
+calamine
+License: MIT
+Repository: https://github.com/tafia/calamine
+License text: https://github.com/tafia/calamine/blob/master/LICENSE
+
+Apache Arrow Rust crates: arrow-array, arrow-schema
+License: Apache-2.0
+Repository: https://github.com/apache/arrow-rs
+License text: https://github.com/apache/arrow-rs/blob/master/LICENSE.txt
+
+chrono
+License: MIT OR Apache-2.0
+Repository: https://github.com/chronotope/chrono
+License text: https://github.com/chronotope/chrono/tree/main/LICENSES
+
+extendr-api
+License: MIT
+Repository: https://github.com/extendr/extendr
+License text: https://github.com/extendr/extendr/blob/master/LICENSE
+
+zip
+License: MIT
+Repository: https://github.com/zip-rs/zip2
+License text: https://github.com/zip-rs/zip2/blob/master/LICENSE
 
 MIT License
 
