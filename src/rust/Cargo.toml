@@ -13,4 +13,4 @@ arrow-schema = "56"
 chrono = "0.4"
 extendr-api = { version = "0.8", features = ["result_condition"] }
 fastexcel_rs = { package = "fastexcel", version = "0.20.1" }
-zip = { version = "7.2", default-features = false }
+zip = { version = "9.0", default-features = false }
